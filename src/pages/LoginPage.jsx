@@ -19,10 +19,29 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    alert('Authentication is not implemented yet. Coming soon!')
+    setError('')
+    setLoading(true)
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password, role: selectedRole }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Login failed')
+      localStorage.setItem('accessToken', data.accessToken)
+      alert(`Welcome back, ${data.user.firstName}!`)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const activeRole = roles.find((r) => r.id === selectedRole)
@@ -30,11 +49,11 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex">
       {/* ── Left Panel ── */}
-      <div className="hidden lg:flex lg:w-5/12 xl:w-1/2 bg-gradient-to-br from-blue-950 via-blue-900 to-blue-800 flex-col justify-between p-12 relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-5/12 xl:w-1/2 bg-gradient-to-br from-teal-950 via-teal-900 to-teal-800 flex-col justify-between p-12 relative overflow-hidden">
         {/* Decoration */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-32 -right-32 w-96 h-96 bg-blue-600/30 rounded-full blur-3xl" />
-          <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-indigo-600/30 rounded-full blur-3xl" />
+          <div className="absolute -top-32 -right-32 w-96 h-96 bg-teal-600/30 rounded-full blur-3xl" />
+          <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-emerald-600/30 rounded-full blur-3xl" />
         </div>
 
         {/* Top: Logo */}
@@ -51,7 +70,7 @@ export default function LoginPage() {
             <br />
             opportunity awaits.
           </h1>
-          <p className="text-blue-200 text-lg leading-relaxed">
+          <p className="text-teal-200 text-lg leading-relaxed">
             Sign in to access your personalized internship dashboard and manage your journey from
             anywhere.
           </p>
@@ -64,8 +83,8 @@ export default function LoginPage() {
             { icon: CheckCircle, text: 'Verified internship listings' },
             { icon: CheckCircle, text: 'University & company partnerships' },
           ].map(({ icon: Icon, text }) => (
-            <div key={text} className="flex items-center gap-3 text-blue-100">
-              <Icon size={18} className="text-blue-300 flex-shrink-0" />
+            <div key={text} className="flex items-center gap-3 text-teal-100">
+              <Icon size={18} className="text-teal-300 flex-shrink-0" />
               <span className="text-sm font-medium">{text}</span>
             </div>
           ))}
@@ -80,7 +99,7 @@ export default function LoginPage() {
           ].map(({ number, label }) => (
             <div key={label} className="bg-white/10 backdrop-blur rounded-xl p-4 text-center border border-white/10">
               <div className="text-2xl font-black text-white mb-1">{number}</div>
-              <div className="text-blue-300 text-xs font-medium">{label}</div>
+              <div className="text-teal-300 text-xs font-medium">{label}</div>
             </div>
           ))}
         </div>
@@ -91,25 +110,25 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2.5 mb-8">
-            <div className="w-9 h-9 bg-blue-700 rounded-xl flex items-center justify-center shadow-md shadow-blue-200">
+            <div className="w-9 h-9 bg-teal-600 rounded-xl flex items-center justify-center shadow-md shadow-teal-200">
               <span className="text-white font-extrabold text-sm">IC</span>
             </div>
-            <span className="text-slate-900 font-bold text-lg">InternConnect</span>
+            <span className="text-stone-900 font-bold text-lg">InternConnect</span>
           </div>
 
-          <h2 className="text-3xl font-black text-slate-900 mb-1">Welcome back</h2>
-          <p className="text-slate-500 mb-8">Sign in to your account to continue.</p>
+          <h2 className="text-3xl font-black text-stone-900 mb-1">Welcome back</h2>
+          <p className="text-stone-500 mb-8">Sign in to your account to continue.</p>
 
           {/* Role Selector */}
-          <div className="grid grid-cols-4 gap-1.5 mb-8 p-1.5 bg-slate-100 rounded-2xl">
+          <div className="grid grid-cols-4 gap-1.5 mb-8 p-1.5 bg-stone-100 rounded-2xl">
             {roles.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
                 onClick={() => setSelectedRole(id)}
                 className={`flex flex-col items-center gap-1.5 py-3 px-1 rounded-xl text-xs font-semibold transition-all ${
                   selectedRole === id
-                    ? 'bg-blue-700 text-white shadow-md'
-                    : 'text-slate-500 hover:text-slate-700'
+                    ? 'bg-teal-600 text-white shadow-md'
+                    : 'text-stone-500 hover:text-stone-700'
                 }`}
               >
                 <Icon size={17} />
@@ -123,7 +142,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => alert('Google OAuth coming soon!')}
-              className="flex items-center justify-center gap-2 px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              className="flex items-center justify-center gap-2 px-4 py-3 border border-stone-200 rounded-xl text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors"
             >
               {/* Google icon */}
               <svg className="w-4 h-4" viewBox="0 0 24 24">
@@ -137,7 +156,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => alert('GitHub OAuth coming soon!')}
-              className="flex items-center justify-center gap-2 px-4 py-3 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+              className="flex items-center justify-center gap-2 px-4 py-3 border border-stone-200 rounded-xl text-sm font-medium text-stone-700 hover:bg-stone-50 transition-colors"
             >
               <Github size={16} />
               Continue with GitHub
@@ -147,31 +166,38 @@ export default function LoginPage() {
           {/* Divider */}
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200" />
+              <div className="w-full border-t border-stone-200" />
             </div>
             <div className="relative flex justify-center">
-              <span className="bg-white px-4 text-xs text-slate-500 font-medium uppercase tracking-wide">
+              <span className="bg-white px-4 text-xs text-stone-500 font-medium uppercase tracking-wide">
                 or continue with email
               </span>
             </div>
           </div>
 
+          {/* Error */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Email */}
             <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+              <label className="block text-sm font-semibold text-stone-700 mb-1.5">
                 Email address
               </label>
               <div className="relative">
-                <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   required
-                  className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  className="w-full pl-10 pr-4 py-3 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
                 />
               </div>
             </div>
@@ -179,25 +205,25 @@ export default function LoginPage() {
             {/* Password */}
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-sm font-semibold text-slate-700">Password</label>
-                <a href="#" className="text-sm text-blue-600 hover:text-blue-700 font-medium">
+                <label className="block text-sm font-semibold text-stone-700">Password</label>
+                <a href="#" className="text-sm text-teal-600 hover:text-teal-700 font-medium">
                   Forgot password?
                 </a>
               </div>
               <div className="relative">
-                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
-                  className="w-full pl-10 pr-10 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  className="w-full pl-10 pr-10 py-3 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 transition-colors"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -210,32 +236,39 @@ export default function LoginPage() {
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                className="w-4 h-4 rounded border-stone-300 text-teal-600 focus:ring-teal-500"
               />
-              <span className="text-sm text-slate-700">Remember me for 30 days</span>
+              <span className="text-sm text-stone-700">Remember me for 30 days</span>
             </label>
 
             {/* Submit */}
             <button
               type="submit"
-              className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md shadow-blue-200 flex items-center justify-center gap-2"
+              disabled={loading}
+              className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white font-bold py-3.5 rounded-xl transition-all shadow-md shadow-teal-200 flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed"
             >
-              {activeRole && <activeRole.icon size={17} />}
-              Sign in as {activeRole?.label}
+              {loading ? (
+                'Signing in…'
+              ) : (
+                <>
+                  {activeRole && <activeRole.icon size={17} />}
+                  Sign in as {activeRole?.label}
+                </>
+              )}
             </button>
           </form>
 
-          <p className="text-center text-sm text-slate-500 mt-8">
+          <p className="text-center text-sm text-stone-500 mt-8">
             Don't have an account?{' '}
-            <Link to="/register" className="text-blue-600 hover:text-blue-700 font-semibold">
+            <Link to="/register" className="text-teal-600 hover:text-teal-700 font-semibold">
               Create one now
             </Link>
           </p>
 
-          <p className="text-center text-xs text-slate-400 mt-4">
+          <p className="text-center text-xs text-stone-400 mt-4">
             By signing in, you agree to our{' '}
-            <a href="#" className="underline hover:text-slate-600">Terms of Service</a> and{' '}
-            <a href="#" className="underline hover:text-slate-600">Privacy Policy</a>.
+            <a href="#" className="underline hover:text-stone-600">Terms of Service</a> and{' '}
+            <a href="#" className="underline hover:text-stone-600">Privacy Policy</a>.
           </p>
         </div>
       </div>
