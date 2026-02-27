@@ -12,11 +12,11 @@ const roles = [
     icon: GraduationCap,
     desc: 'Find internships, track applications, and launch your career.',
     color: {
-      border: 'border-blue-500',
-      bg: 'bg-blue-50',
-      ring: 'ring-blue-400',
-      iconActive: 'bg-blue-700',
-      iconInactive: 'bg-slate-100',
+      border: 'border-teal-500',
+      bg: 'bg-teal-50',
+      ring: 'ring-teal-400',
+      iconActive: 'bg-teal-600',
+      iconInactive: 'bg-stone-100',
     },
   },
   {
@@ -25,11 +25,11 @@ const roles = [
     icon: Building2,
     desc: 'Post internships and connect with top university talent.',
     color: {
-      border: 'border-indigo-500',
-      bg: 'bg-indigo-50',
-      ring: 'ring-indigo-400',
-      iconActive: 'bg-indigo-700',
-      iconInactive: 'bg-slate-100',
+      border: 'border-emerald-500',
+      bg: 'bg-emerald-50',
+      ring: 'ring-emerald-400',
+      iconActive: 'bg-emerald-700',
+      iconInactive: 'bg-stone-100',
     },
   },
   {
@@ -38,11 +38,11 @@ const roles = [
     icon: Award,
     desc: 'Manage student placements and generate compliance reports.',
     color: {
-      border: 'border-violet-500',
-      bg: 'bg-violet-50',
-      ring: 'ring-violet-400',
-      iconActive: 'bg-violet-700',
-      iconInactive: 'bg-slate-100',
+      border: 'border-amber-500',
+      bg: 'bg-amber-50',
+      ring: 'ring-amber-400',
+      iconActive: 'bg-amber-600',
+      iconInactive: 'bg-stone-100',
     },
   },
 ]
@@ -89,62 +89,106 @@ export default function RegisterPage() {
     accreditationCode: '',
   })
 
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
   const set = (field) => (e) => setForm((prev) => ({ ...prev, [field]: e.target.value }))
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    alert('Registration is not implemented yet. Authentication coming soon!')
+    setError('')
+    setLoading(true)
+    try {
+      const payload = {
+        firstName: form.firstName,
+        lastName: form.lastName,
+        email: form.email,
+        password: form.password,
+        role: selectedRole,
+      }
+      // Attach role-specific fields
+      if (selectedRole === 'student') {
+        payload.university = form.university
+        payload.major = form.major
+        if (form.gpa) payload.gpa = parseFloat(form.gpa)
+        if (form.graduationYear) payload.graduationYear = parseInt(form.graduationYear, 10)
+      } else if (selectedRole === 'company') {
+        payload.companyName = form.companyName
+        payload.industry = form.industry
+        payload.website = form.website
+        payload.companySize = form.companySize
+      } else if (selectedRole === 'university') {
+        payload.universityName = form.universityName
+        payload.country = form.country
+        payload.accreditationCode = form.accreditationCode
+      }
+
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || 'Registration failed')
+      localStorage.setItem('accessToken', data.accessToken)
+      alert(`Account created! Welcome, ${data.user.firstName}!`)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const activeRoleData = roles.find((r) => r.id === selectedRole)
 
   const inputClass =
-    'w-full px-4 py-3 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition'
+    'w-full px-4 py-3 border border-stone-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-transparent transition'
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center py-12 px-4">
+    <div className="min-h-screen bg-stone-50 flex items-center justify-center py-12 px-4">
       <div className="w-full max-w-2xl">
         {/* Logo + Progress */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2.5 mb-7">
-            <div className="w-9 h-9 bg-blue-700 rounded-xl flex items-center justify-center shadow-md shadow-blue-200">
+            <div className="w-9 h-9 bg-teal-600 rounded-xl flex items-center justify-center shadow-md shadow-teal-200">
               <span className="text-white font-extrabold text-sm">IC</span>
             </div>
-            <span className="text-slate-900 font-bold text-xl">InternConnect</span>
+            <span className="text-stone-900 font-bold text-xl">InternConnect</span>
           </Link>
 
           {/* Step indicator */}
           <div className="flex items-center justify-center gap-3 mb-2">
             <div
               className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-                step >= 1 ? 'bg-blue-700 text-white' : 'bg-slate-200 text-slate-500'
+                step >= 1 ? 'bg-teal-600 text-white' : 'bg-stone-200 text-stone-500'
               }`}
             >
               {step > 1 ? <CheckCircle size={18} /> : '1'}
             </div>
-            <div className={`w-20 h-1.5 rounded-full transition-colors ${step >= 2 ? 'bg-blue-700' : 'bg-slate-200'}`} />
+            <div className={`w-20 h-1.5 rounded-full transition-colors ${step >= 2 ? 'bg-teal-600' : 'bg-stone-200'}`} />
             <div
               className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
-                step >= 2 ? 'bg-blue-700 text-white' : 'bg-slate-200 text-slate-500'
+                step >= 2 ? 'bg-teal-600 text-white' : 'bg-stone-200 text-stone-500'
               }`}
             >
               2
             </div>
           </div>
-          <p className="text-sm text-slate-500 font-medium">
+          <p className="text-sm text-stone-500 font-medium">
             {step === 1 ? 'Step 1 — Choose your role' : `Step 2 — Complete your ${activeRoleData?.label} profile`}
           </p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 md:p-10">
+        <div className="bg-white rounded-3xl shadow-sm border border-stone-200 p-8 md:p-10">
           {/* ── Step 1: Role Selection ── */}
           {step === 1 && (
             <>
-              <h2 className="text-2xl font-black text-slate-900 mb-1 text-center">
+              <h2 className="text-2xl font-black text-stone-900 mb-1 text-center">
                 Join InternConnect
               </h2>
-              <p className="text-slate-500 text-center mb-8">
+              <p className="text-stone-500 text-center mb-8">
                 How will you be using the platform?
               </p>
 
@@ -156,7 +200,7 @@ export default function RegisterPage() {
                     className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 text-left transition-all ${
                       selectedRole === id
                         ? `${color.border} ${color.bg} ring-2 ${color.ring}`
-                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                        : 'border-stone-200 hover:border-stone-300 bg-white'
                     }`}
                   >
                     <div
@@ -164,14 +208,14 @@ export default function RegisterPage() {
                         selectedRole === id ? color.iconActive : color.iconInactive
                       }`}
                     >
-                      <Icon size={21} className={selectedRole === id ? 'text-white' : 'text-slate-500'} />
+                      <Icon size={21} className={selectedRole === id ? 'text-white' : 'text-stone-500'} />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-bold text-slate-900">{label}</div>
-                      <div className="text-sm text-slate-500 mt-0.5">{desc}</div>
+                      <div className="font-bold text-stone-900">{label}</div>
+                      <div className="text-sm text-stone-500 mt-0.5">{desc}</div>
                     </div>
                     {selectedRole === id && (
-                      <div className="w-6 h-6 bg-blue-700 rounded-full flex items-center justify-center flex-shrink-0">
+                      <div className={`w-6 h-6 ${color.iconActive} rounded-full flex items-center justify-center flex-shrink-0`}>
                         <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
@@ -184,14 +228,14 @@ export default function RegisterPage() {
               <button
                 onClick={() => selectedRole && setStep(2)}
                 disabled={!selectedRole}
-                className="w-full flex items-center justify-center gap-2 bg-blue-700 hover:bg-blue-800 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-colors"
+                className="w-full flex items-center justify-center gap-2 bg-teal-600 hover:bg-teal-700 disabled:bg-stone-200 disabled:text-stone-400 disabled:cursor-not-allowed text-white font-bold py-3.5 rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98]"
               >
                 Continue <ArrowRight size={17} />
               </button>
 
-              <p className="text-center text-sm text-slate-500 mt-6">
+              <p className="text-center text-sm text-stone-500 mt-6">
                 Already have an account?{' '}
-                <Link to="/login" className="text-blue-600 hover:text-blue-700 font-semibold">
+                <Link to="/login" className="text-teal-600 hover:text-teal-700 font-semibold">
                   Sign in
                 </Link>
               </p>
@@ -204,25 +248,31 @@ export default function RegisterPage() {
               <div className="flex items-center gap-3 mb-7">
                 <button
                   onClick={() => setStep(1)}
-                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-stone-100 rounded-lg transition-colors"
                   aria-label="Go back"
                 >
-                  <ArrowLeft size={18} className="text-slate-600" />
+                  <ArrowLeft size={18} className="text-stone-600" />
                 </button>
                 <div>
-                  <h2 className="text-2xl font-black text-slate-900">Create your account</h2>
-                  <p className="text-slate-500 text-sm">
+                  <h2 className="text-2xl font-black text-stone-900">Create your account</h2>
+                  <p className="text-stone-500 text-sm">
                     Registering as a{' '}
-                    <span className="font-semibold text-slate-700">{activeRoleData?.label}</span>
+                    <span className="font-semibold text-stone-700">{activeRoleData?.label}</span>
                   </p>
                 </div>
               </div>
+
+              {error && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+                  {error}
+                </div>
+              )}
 
               <form onSubmit={handleSubmit} className="space-y-5">
                 {/* Common: Name */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                    <label className="block text-sm font-semibold text-stone-700 mb-1.5">
                       First Name
                     </label>
                     <input
@@ -235,7 +285,7 @@ export default function RegisterPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                    <label className="block text-sm font-semibold text-stone-700 mb-1.5">
                       Last Name
                     </label>
                     <input
@@ -251,7 +301,7 @@ export default function RegisterPage() {
 
                 {/* Common: Email */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  <label className="block text-sm font-semibold text-stone-700 mb-1.5">
                     Email Address
                   </label>
                   <input
@@ -266,7 +316,7 @@ export default function RegisterPage() {
 
                 {/* Common: Password */}
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  <label className="block text-sm font-semibold text-stone-700 mb-1.5">
                     Password
                   </label>
                   <div className="relative">
@@ -282,12 +332,12 @@ export default function RegisterPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 transition-colors"
                     >
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
-                  <p className="text-xs text-slate-400 mt-1.5">
+                  <p className="text-xs text-stone-400 mt-1.5">
                     Minimum 8 characters. Use a mix of letters, numbers, and symbols.
                   </p>
                 </div>
@@ -296,7 +346,7 @@ export default function RegisterPage() {
                 {selectedRole === 'student' && (
                   <>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      <label className="block text-sm font-semibold text-stone-700 mb-1.5">
                         University / Institution
                       </label>
                       <input
@@ -309,7 +359,7 @@ export default function RegisterPage() {
                     </div>
                     <div className="grid grid-cols-3 gap-4">
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                        <label className="block text-sm font-semibold text-stone-700 mb-1.5">
                           Major / Field
                         </label>
                         <input
@@ -321,7 +371,7 @@ export default function RegisterPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                        <label className="block text-sm font-semibold text-stone-700 mb-1.5">
                           GPA
                         </label>
                         <input
@@ -336,7 +386,7 @@ export default function RegisterPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                        <label className="block text-sm font-semibold text-stone-700 mb-1.5">
                           Grad Year
                         </label>
                         <input
@@ -357,7 +407,7 @@ export default function RegisterPage() {
                 {selectedRole === 'company' && (
                   <>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      <label className="block text-sm font-semibold text-stone-700 mb-1.5">
                         Company Name
                       </label>
                       <input
@@ -371,7 +421,7 @@ export default function RegisterPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                        <label className="block text-sm font-semibold text-stone-700 mb-1.5">
                           Industry
                         </label>
                         <select
@@ -388,7 +438,7 @@ export default function RegisterPage() {
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                        <label className="block text-sm font-semibold text-stone-700 mb-1.5">
                           Company Size
                         </label>
                         <select
@@ -406,7 +456,7 @@ export default function RegisterPage() {
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      <label className="block text-sm font-semibold text-stone-700 mb-1.5">
                         Company Website
                       </label>
                       <input
@@ -428,7 +478,7 @@ export default function RegisterPage() {
                 {selectedRole === 'university' && (
                   <>
                     <div>
-                      <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                      <label className="block text-sm font-semibold text-stone-700 mb-1.5">
                         University / Institution Name
                       </label>
                       <input
@@ -442,7 +492,7 @@ export default function RegisterPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                        <label className="block text-sm font-semibold text-stone-700 mb-1.5">
                           Country
                         </label>
                         <input
@@ -454,7 +504,7 @@ export default function RegisterPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-semibold text-slate-700 mb-1.5">
+                        <label className="block text-sm font-semibold text-stone-700 mb-1.5">
                           Accreditation Code
                         </label>
                         <input
@@ -466,7 +516,7 @@ export default function RegisterPage() {
                         />
                       </div>
                     </div>
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-sm text-blue-800">
+                    <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 text-sm text-teal-800">
                       <strong>Note:</strong> Your institution account will need admin approval before
                       you can verify students and access the full dashboard.
                     </div>
@@ -480,15 +530,15 @@ export default function RegisterPage() {
                     checked={agreedToTerms}
                     onChange={(e) => setAgreedToTerms(e.target.checked)}
                     required
-                    className="mt-0.5 w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    className="mt-0.5 w-4 h-4 rounded border-stone-300 text-teal-600 focus:ring-teal-500"
                   />
-                  <span className="text-sm text-slate-700">
+                  <span className="text-sm text-stone-700">
                     I agree to the{' '}
-                    <a href="#" className="text-blue-600 hover:underline font-medium">
+                    <a href="#" className="text-teal-600 hover:underline font-medium">
                       Terms of Service
                     </a>{' '}
                     and{' '}
-                    <a href="#" className="text-blue-600 hover:underline font-medium">
+                    <a href="#" className="text-teal-600 hover:underline font-medium">
                       Privacy Policy
                     </a>
                   </span>
@@ -497,15 +547,16 @@ export default function RegisterPage() {
                 {/* Submit */}
                 <button
                   type="submit"
-                  className="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3.5 rounded-xl transition-colors shadow-md shadow-blue-200"
+                  disabled={loading}
+                  className="w-full bg-teal-600 hover:bg-teal-700 disabled:bg-teal-400 text-white font-bold py-3.5 rounded-xl transition-all shadow-md shadow-teal-200 hover:scale-[1.02] active:scale-[0.98] disabled:cursor-not-allowed"
                 >
-                  Create {activeRoleData?.label} Account
+                  {loading ? 'Creating account…' : `Create ${activeRoleData?.label} Account`}
                 </button>
               </form>
 
-              <p className="text-center text-sm text-slate-500 mt-6">
+              <p className="text-center text-sm text-stone-500 mt-6">
                 Already have an account?{' '}
-                <Link to="/login" className="text-blue-600 hover:text-blue-700 font-semibold">
+                <Link to="/login" className="text-teal-600 hover:text-teal-700 font-semibold">
                   Sign in
                 </Link>
               </p>
