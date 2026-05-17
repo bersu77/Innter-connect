@@ -1,0 +1,5 @@
+// Barrel export for the InternConnect design-system primitives.
+export { default as Button } from './Button';
+export { default as Card } from './Card';
+export { default as Input } from './Input';
+export { default as Spinner } from './Spinner';
