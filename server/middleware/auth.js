@@ -1,7 +1,7 @@
 import { verifyAccessToken } from '../utils/jwt.js';
 import User from '../models/User.js';
 
-// Protect routes — requires Bearer token
+// Protect routes — requires a valid Bearer access token.
 export const protect = async (req, res, next) => {
   try {
     const header = req.headers.authorization;
@@ -16,20 +16,23 @@ export const protect = async (req, res, next) => {
     if (!user) {
       return res.status(401).json({ success: false, message: 'User no longer exists' });
     }
+    if (user.status === 'suspended' || user.status === 'deleted') {
+      return res.status(403).json({ success: false, message: 'Account is not active' });
+    }
 
     req.user = user;
     next();
-  } catch (err) {
+  } catch {
     return res.status(401).json({ success: false, message: 'Not authorized — token invalid' });
   }
 };
 
-// Restrict to specific roles
-export const authorize = (...roles) => (req, res, next) => {
-  if (!roles.includes(req.user.role)) {
+// Restrict a route to specific userTypes.
+export const authorize = (...userTypes) => (req, res, next) => {
+  if (!userTypes.includes(req.user.userType)) {
     return res.status(403).json({
       success: false,
-      message: `Role '${req.user.role}' is not authorized for this route`,
+      message: `User type '${req.user.userType}' is not authorized for this route`,
     });
   }
   next();
