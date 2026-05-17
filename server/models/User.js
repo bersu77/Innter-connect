@@ -2,45 +2,10 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import validator from 'validator';
 
-const studentProfileSchema = new mongoose.Schema(
-  {
-    university: { type: String, default: '' },
-    major: { type: String, default: '' },
-    gpa: { type: Number, min: 0, max: 4 },
-    graduationYear: Number,
-    verified: { type: Boolean, default: false },
-    verifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  },
-  { _id: false }
-);
-
-const companyProfileSchema = new mongoose.Schema(
-  {
-    companyName: { type: String, required: true },
-    industry: String,
-    website: String,
-    companySize: String,
-    approved: { type: Boolean, default: false },
-    approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  },
-  { _id: false }
-);
-
-const universityProfileSchema = new mongoose.Schema(
-  {
-    universityName: { type: String, required: true },
-    country: String,
-    accreditationCode: String,
-    approved: { type: Boolean, default: false },
-    approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
-  },
-  { _id: false }
-);
-
+// Users collection (PDF §3.3.5.2.1) — foundational auth record.
+// Profile data lives in the Student / Company / University collections.
 const userSchema = new mongoose.Schema(
   {
-    firstName: { type: String, required: [true, 'First name is required'], trim: true },
-    lastName: { type: String, required: [true, 'Last name is required'], trim: true },
     email: {
       type: String,
       required: [true, 'Email is required'],
@@ -55,30 +20,55 @@ const userSchema = new mongoose.Schema(
       minlength: [8, 'Password must be at least 8 characters'],
       select: false,
     },
-    role: {
+    firstName: { type: String, required: [true, 'First name is required'], trim: true },
+    lastName: { type: String, required: [true, 'Last name is required'], trim: true },
+    userType: {
       type: String,
-      enum: ['student', 'company', 'university', 'admin'],
-      required: [true, 'Role is required'],
+      enum: ['student', 'university', 'company', 'admin'],
+      required: [true, 'User type is required'],
     },
-    studentProfile: studentProfileSchema,
-    companyProfile: companyProfileSchema,
-    universityProfile: universityProfileSchema,
+    // Sub-roles within a userType (e.g. supervisor, recruiter, auditor) — drives RBAC.
+    roles: { type: [String], default: [] },
+    permissions: { type: [String], default: [] },
+    status: { type: String, enum: ['active', 'suspended', 'deleted'], default: 'active' },
+    verificationStatus: {
+      type: String,
+      enum: ['unverified', 'pending', 'verified', 'rejected'],
+      default: 'unverified',
+    },
+    profileComplete: { type: Boolean, default: false },
+    lastLogin: Date,
+    loginAttempts: { type: Number, default: 0 },
+    accountLockedUntil: Date,
     refreshToken: { type: String, select: false },
-    isActive: { type: Boolean, default: true },
+    deletedAt: Date,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-// Hash password before save
+userSchema.index({ userType: 1 });
+userSchema.index({ status: 1 });
+
+// Hash password before save.
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
 
-// Compare candidate password
-userSchema.methods.comparePassword = async function (candidate) {
+userSchema.methods.comparePassword = function (candidate) {
   return bcrypt.compare(candidate, this.password);
 };
+
+userSchema.virtual('isLocked').get(function () {
+  return !!this.accountLockedUntil && this.accountLockedUntil > Date.now();
+});
+
+userSchema.virtual('fullName').get(function () {
+  return `${this.firstName} ${this.lastName}`.trim();
+});
+
+userSchema.set('toJSON', { virtuals: true });
+userSchema.set('toObject', { virtuals: true });
 
 export default mongoose.model('User', userSchema);

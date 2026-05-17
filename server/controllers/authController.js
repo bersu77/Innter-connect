@@ -6,7 +6,9 @@ import {
   verifyRefreshToken,
 } from '../utils/jwt.js';
 
-// Helper: set refresh token as HTTP-only cookie
+// Phase 1 note: adapted to the new User/AuditLog schemas. Phase 2 rebuilds this
+// with full RBAC, account lockout, and session hardening.
+
 const sendRefreshCookie = (res, token) => {
   res.cookie('refreshToken', token, {
     httpOnly: true,
@@ -16,82 +18,53 @@ const sendRefreshCookie = (res, token) => {
   });
 };
 
+const publicUser = (user) => ({
+  id: user._id,
+  firstName: user.firstName,
+  lastName: user.lastName,
+  email: user.email,
+  userType: user.userType,
+  roles: user.roles,
+  status: user.status,
+  verificationStatus: user.verificationStatus,
+  profileComplete: user.profileComplete,
+});
+
 // @route  POST /api/auth/register
 export const register = async (req, res, next) => {
   try {
-    const { firstName, lastName, email, password, role, ...rest } = req.body;
+    const { firstName, lastName, email, password } = req.body;
+    const userType = req.body.userType || req.body.role;
 
-    // Check if user already exists
+    if (!userType) {
+      return res.status(400).json({ success: false, message: 'User type is required' });
+    }
+
     const existing = await User.findOne({ email });
     if (existing) {
       return res.status(400).json({ success: false, message: 'Email already registered' });
     }
 
-    // Build user object with role-specific profile
-    const userData = { firstName, lastName, email, password, role };
+    const user = await User.create({ firstName, lastName, email, password, userType });
 
-    if (role === 'student') {
-      userData.studentProfile = {
-        university: rest.university || '',
-        major: rest.major || '',
-        gpa: rest.gpa || undefined,
-        graduationYear: rest.graduationYear || undefined,
-      };
-    } else if (role === 'company') {
-      if (!rest.companyName) {
-        return res.status(400).json({ success: false, message: 'Company name is required' });
-      }
-      userData.companyProfile = {
-        companyName: rest.companyName,
-        industry: rest.industry || '',
-        website: rest.website || '',
-        companySize: rest.companySize || '',
-      };
-    } else if (role === 'university') {
-      if (!rest.universityName) {
-        return res.status(400).json({ success: false, message: 'University name is required' });
-      }
-      userData.universityProfile = {
-        universityName: rest.universityName,
-        country: rest.country || '',
-        accreditationCode: rest.accreditationCode || '',
-      };
-    }
-
-    const user = await User.create(userData);
-
-    // Generate tokens
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
-
-    // Store refresh token on user
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
 
-    // Audit log
     await AuditLog.create({
-      user: user._id,
+      userId: user._id,
+      userType: user.userType,
       action: 'register',
-      resource: 'User',
-      resourceId: user._id,
-      details: `New ${role} account created`,
-      ip: req.ip,
+      entityType: 'User',
+      entityId: user._id,
+      ipAddress: req.ip,
       userAgent: req.get('User-Agent'),
+      status: 'success',
     });
 
     sendRefreshCookie(res, refreshToken);
-
-    res.status(201).json({
-      success: true,
-      accessToken,
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-      },
-    });
+    res.status(201).json({ success: true, token: accessToken, user: publicUser(user) });
   } catch (err) {
     next(err);
   }
@@ -100,23 +73,16 @@ export const register = async (req, res, next) => {
 // @route  POST /api/auth/login
 export const login = async (req, res, next) => {
   try {
-    const { email, password, role } = req.body;
-
+    const { email, password } = req.body;
     if (!email || !password) {
-      return res.status(400).json({ success: false, message: 'Email and password are required' });
+      return res
+        .status(400)
+        .json({ success: false, message: 'Email and password are required' });
     }
 
     const user = await User.findOne({ email }).select('+password');
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-
-    // Optional role check — if provided, ensure it matches
-    if (role && user.role !== role) {
-      return res.status(401).json({
-        success: false,
-        message: `This account is registered as '${user.role}', not '${role}'`,
-      });
     }
 
     const isMatch = await user.comparePassword(password);
@@ -126,34 +92,23 @@ export const login = async (req, res, next) => {
 
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
-
     user.refreshToken = refreshToken;
+    user.lastLogin = new Date();
     await user.save({ validateBeforeSave: false });
 
-    // Audit log
     await AuditLog.create({
-      user: user._id,
+      userId: user._id,
+      userType: user.userType,
       action: 'login',
-      resource: 'User',
-      resourceId: user._id,
-      details: `${user.role} logged in`,
-      ip: req.ip,
+      entityType: 'User',
+      entityId: user._id,
+      ipAddress: req.ip,
       userAgent: req.get('User-Agent'),
+      status: 'success',
     });
 
     sendRefreshCookie(res, refreshToken);
-
-    res.json({
-      success: true,
-      accessToken,
-      user: {
-        id: user._id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        role: user.role,
-      },
-    });
+    res.json({ success: true, token: accessToken, user: publicUser(user) });
   } catch (err) {
     next(err);
   }
@@ -169,28 +124,24 @@ export const refresh = async (req, res, next) => {
 
     const decoded = verifyRefreshToken(token);
     const user = await User.findById(decoded.id).select('+refreshToken');
-
     if (!user || user.refreshToken !== token) {
       return res.status(401).json({ success: false, message: 'Invalid refresh token' });
     }
 
-    // Rotate tokens
     const accessToken = generateAccessToken(user._id);
     const newRefreshToken = generateRefreshToken(user._id);
-
     user.refreshToken = newRefreshToken;
     await user.save({ validateBeforeSave: false });
 
     sendRefreshCookie(res, newRefreshToken);
-
-    res.json({ success: true, accessToken });
+    res.json({ success: true, token: accessToken });
   } catch (err) {
     next(err);
   }
 };
 
 // @route  POST /api/auth/logout
-export const logout = async (req, res, next) => {
+export const logout = async (req, res) => {
   try {
     const token = req.cookies.refreshToken;
     if (token) {
@@ -198,17 +149,14 @@ export const logout = async (req, res, next) => {
         const decoded = verifyRefreshToken(token);
         await User.findByIdAndUpdate(decoded.id, { refreshToken: null });
       } catch {
-        // Token invalid — just clear the cookie
+        // Token invalid — clearing the cookie below is enough.
       }
     }
-
-    res.clearCookie('refreshToken');
-    res.json({ success: true, message: 'Logged out' });
   } catch {
-    // Even if token is invalid, clear the cookie
-    res.clearCookie('refreshToken');
-    res.json({ success: true, message: 'Logged out' });
+    // Logout must always succeed for the client.
   }
+  res.clearCookie('refreshToken');
+  res.json({ success: true, message: 'Logged out' });
 };
 
 // @route  GET /api/auth/me
