@@ -1,20 +1,21 @@
 import User from '../models/User.js';
-import AuditLog from '../models/AuditLog.js';
+import { logAudit } from '../services/audit.js';
 import {
   generateAccessToken,
   generateRefreshToken,
   verifyRefreshToken,
 } from '../utils/jwt.js';
 
-// Phase 1 note: adapted to the new User/AuditLog schemas. Phase 2 rebuilds this
-// with full RBAC, account lockout, and session hardening.
+// Auth controller (PKG_02 / UC001) — registration, login, sessions, lockout.
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCK_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 
 const sendRefreshCookie = (res, token) => {
   res.cookie('refreshToken', token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    maxAge: 7 * 24 * 60 * 60 * 1000,
   });
 };
 
@@ -25,19 +26,25 @@ const publicUser = (user) => ({
   email: user.email,
   userType: user.userType,
   roles: user.roles,
+  permissions: user.permissions,
   status: user.status,
   verificationStatus: user.verificationStatus,
   profileComplete: user.profileComplete,
 });
 
-// @route  POST /api/auth/register
+// @route POST /api/auth/register
 export const register = async (req, res, next) => {
   try {
     const { firstName, lastName, email, password } = req.body;
     const userType = req.body.userType || req.body.role;
 
-    if (!userType) {
-      return res.status(400).json({ success: false, message: 'User type is required' });
+    if (!firstName || !lastName || !email || !password || !userType) {
+      return res.status(400).json({ success: false, message: 'All fields are required' });
+    }
+    if (userType === 'admin') {
+      return res
+        .status(403)
+        .json({ success: false, message: 'Administrator accounts cannot be self-registered' });
     }
 
     const existing = await User.findOne({ email });
@@ -52,16 +59,7 @@ export const register = async (req, res, next) => {
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
 
-    await AuditLog.create({
-      userId: user._id,
-      userType: user.userType,
-      action: 'register',
-      entityType: 'User',
-      entityId: user._id,
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent'),
-      status: 'success',
-    });
+    await logAudit({ req, user, action: 'USER_REGISTER', entityType: 'User', entityId: user._id });
 
     sendRefreshCookie(res, refreshToken);
     res.status(201).json({ success: true, token: accessToken, user: publicUser(user) });
@@ -70,7 +68,7 @@ export const register = async (req, res, next) => {
   }
 };
 
-// @route  POST /api/auth/login
+// @route POST /api/auth/login
 export const login = async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -85,27 +83,63 @@ export const login = async (req, res, next) => {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    // Account lockout (PDF §2.4.3.7, UC001 business rules).
+    if (user.accountLockedUntil && user.accountLockedUntil > Date.now()) {
+      await logAudit({
+        req,
+        user,
+        action: 'USER_LOGIN',
+        entityType: 'User',
+        entityId: user._id,
+        status: 'failure',
+        errorMessage: 'Account locked',
+      });
+      return res.status(423).json({
+        success: false,
+        message: 'Account temporarily locked due to failed login attempts. Try again later.',
+      });
+    }
+    if (user.status === 'suspended' || user.status === 'deleted') {
+      return res.status(403).json({ success: false, message: 'This account is not active.' });
     }
 
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      user.loginAttempts = (user.loginAttempts || 0) + 1;
+      let justLocked = false;
+      if (user.loginAttempts >= MAX_LOGIN_ATTEMPTS) {
+        user.accountLockedUntil = new Date(Date.now() + LOCK_DURATION_MS);
+        user.loginAttempts = 0;
+        justLocked = true;
+      }
+      await user.save({ validateBeforeSave: false });
+      await logAudit({
+        req,
+        user,
+        action: 'USER_LOGIN',
+        entityType: 'User',
+        entityId: user._id,
+        status: 'failure',
+        errorMessage: 'Invalid password',
+      });
+      return res.status(401).json({
+        success: false,
+        message: justLocked
+          ? 'Too many failed attempts — account locked for 15 minutes.'
+          : 'Invalid credentials',
+      });
+    }
+
+    // Successful login — reset counters.
+    user.loginAttempts = 0;
+    user.accountLockedUntil = undefined;
+    user.lastLogin = new Date();
     const accessToken = generateAccessToken(user._id);
     const refreshToken = generateRefreshToken(user._id);
     user.refreshToken = refreshToken;
-    user.lastLogin = new Date();
     await user.save({ validateBeforeSave: false });
 
-    await AuditLog.create({
-      userId: user._id,
-      userType: user.userType,
-      action: 'login',
-      entityType: 'User',
-      entityId: user._id,
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent'),
-      status: 'success',
-    });
+    await logAudit({ req, user, action: 'USER_LOGIN', entityType: 'User', entityId: user._id });
 
     sendRefreshCookie(res, refreshToken);
     res.json({ success: true, token: accessToken, user: publicUser(user) });
@@ -114,25 +148,22 @@ export const login = async (req, res, next) => {
   }
 };
 
-// @route  POST /api/auth/refresh
+// @route POST /api/auth/refresh
 export const refresh = async (req, res, next) => {
   try {
     const token = req.cookies.refreshToken;
     if (!token) {
       return res.status(401).json({ success: false, message: 'No refresh token' });
     }
-
     const decoded = verifyRefreshToken(token);
     const user = await User.findById(decoded.id).select('+refreshToken');
     if (!user || user.refreshToken !== token) {
       return res.status(401).json({ success: false, message: 'Invalid refresh token' });
     }
-
     const accessToken = generateAccessToken(user._id);
     const newRefreshToken = generateRefreshToken(user._id);
     user.refreshToken = newRefreshToken;
     await user.save({ validateBeforeSave: false });
-
     sendRefreshCookie(res, newRefreshToken);
     res.json({ success: true, token: accessToken });
   } catch (err) {
@@ -140,7 +171,7 @@ export const refresh = async (req, res, next) => {
   }
 };
 
-// @route  POST /api/auth/logout
+// @route POST /api/auth/logout
 export const logout = async (req, res) => {
   try {
     const token = req.cookies.refreshToken;
@@ -149,7 +180,7 @@ export const logout = async (req, res) => {
         const decoded = verifyRefreshToken(token);
         await User.findByIdAndUpdate(decoded.id, { refreshToken: null });
       } catch {
-        // Token invalid — clearing the cookie below is enough.
+        // Invalid token — clearing the cookie below is enough.
       }
     }
   } catch {
@@ -159,7 +190,30 @@ export const logout = async (req, res) => {
   res.json({ success: true, message: 'Logged out' });
 };
 
-// @route  GET /api/auth/me
+// @route GET /api/auth/me
 export const getMe = async (req, res) => {
   res.json({ success: true, user: req.user });
+};
+
+// @route POST /api/auth/forgot-password
+// Email-based reset is delivered in Phase 14; respond generically (no user enumeration).
+export const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+    await logAudit({
+      req,
+      action: 'PASSWORD_RESET_REQUESTED',
+      entityType: 'User',
+      metadata: { email },
+    });
+    res.json({
+      success: true,
+      message: 'If an account exists for that email, password reset instructions will be sent.',
+    });
+  } catch (err) {
+    next(err);
+  }
 };
