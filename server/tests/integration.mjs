@@ -376,7 +376,75 @@ async function phase6() {
   check('application detail includes status history', detail.status === 200 && (detail.json?.application?.statusHistory?.length || 0) >= 1);
 }
 
-const phases = [phase1, phase2, phase3, phase4, phase5, phase6];
+// ── Phase 7 — offers, placement & withdrawal ──
+async function phase7() {
+  lines.push('');
+  lines.push('Phase 7 — offers, placement & withdrawal');
+
+  const offer = await api(`/api/applications/${ctx.applicationId}/status`, {
+    method: 'PATCH',
+    token: ctx.companyToken,
+    body: { status: 'offered' },
+  });
+  check('company can send an offer', offer.status === 200 && offer.json?.application?.status === 'offered');
+
+  const accept = await api(`/api/applications/${ctx.applicationId}/respond-offer`, {
+    method: 'PATCH',
+    token: ctx.studentToken,
+    body: { decision: 'accept' },
+  });
+  check(
+    'student can accept an offer (placement created)',
+    accept.status === 200 && accept.json?.application?.status === 'accepted' && !!accept.json?.placement,
+  );
+  ctx.placementId = accept.json?.placement?._id;
+
+  const posted = await api('/api/internships', {
+    method: 'POST',
+    token: ctx.companyToken,
+    body: { title: 'Mobile Dev Intern', description: 'Build mobile apps.', status: 'active' },
+  });
+  const apply = await api('/api/applications', {
+    method: 'POST',
+    token: ctx.studentToken,
+    body: { internshipId: posted.json?.internship?._id, coverLetter: 'Interested in mobile.' },
+  });
+  const withdraw = await api(`/api/applications/${apply.json?.application?._id}/withdraw`, {
+    method: 'PATCH',
+    token: ctx.studentToken,
+  });
+  check('student can withdraw a submitted application', withdraw.status === 200 && withdraw.json?.application?.status === 'withdrawn');
+
+  const lateWithdraw = await api(`/api/applications/${ctx.applicationId}/withdraw`, {
+    method: 'PATCH',
+    token: ctx.studentToken,
+  });
+  check('withdrawal is blocked after review (business rule)', lateWithdraw.status === 400);
+
+  const placements = await api('/api/placements', { token: ctx.companyToken });
+  check(
+    'company can list placements',
+    placements.status === 200 && placements.json.placements.some((p) => p._id === ctx.placementId),
+  );
+
+  const supers = await api('/api/companies/supervisors', { token: ctx.companyToken });
+  check('supervisors are listable', supers.status === 200 && Array.isArray(supers.json?.supervisors));
+
+  const supervisor = supers.json?.supervisors?.[0];
+  const assign = supervisor
+    ? await api(`/api/placements/${ctx.placementId}/supervisor`, {
+        method: 'PATCH',
+        token: ctx.companyToken,
+        body: { supervisorId: supervisor._id },
+      })
+    : { status: 0, json: {} };
+  check(
+    'company can assign a supervisor',
+    assign.status === 200 && String(assign.json?.placement?.supervisorId) === String(supervisor?._id),
+  );
+}
+
+const phases = [phase1, phase2, phase3, phase4, phase5, phase6, phase7];
 
 async function main() {
   for (const phase of phases) {

@@ -13,28 +13,33 @@ import {
   Mail,
   Handshake,
   ClipboardList,
+  Award,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const dashboard = { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true };
+const placements = { to: '/dashboard/placements', label: 'Placements', icon: Award };
 
 const NAV_BY_ROLE = {
   student: [
     dashboard,
     { to: '/dashboard/internships', label: 'Internships', icon: Briefcase },
     { to: '/dashboard/applications', label: 'My Applications', icon: ClipboardList },
+    placements,
     { to: '/dashboard/profile', label: 'My Profile', icon: User },
   ],
   company: [
     dashboard,
     { to: '/dashboard/internships', label: 'My Internships', icon: Briefcase },
     { to: '/dashboard/applications', label: 'Applications', icon: ClipboardList },
+    placements,
     { to: '/dashboard/invitations', label: 'Invitations', icon: Mail },
     { to: '/dashboard/profile', label: 'Company Profile', icon: Building2 },
   ],
   university: [
     dashboard,
     { to: '/dashboard/students', label: 'Student Verification', icon: UserCheck },
+    placements,
     { to: '/dashboard/partners', label: 'Partner Companies', icon: Handshake },
     { to: '/dashboard/profile', label: 'University Profile', icon: Building2 },
   ],

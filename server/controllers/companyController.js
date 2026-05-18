@@ -75,3 +75,17 @@ export const listCompanies = async (req, res, next) => {
     next(err);
   }
 };
+
+// @route GET /api/companies/supervisors  — supervisor-role users (for assignment, UC009).
+export const listSupervisors = async (_req, res, next) => {
+  try {
+    const supervisors = await User.find({
+      userType: 'company',
+      roles: 'supervisor',
+      status: 'active',
+    }).select('firstName lastName email');
+    res.json({ success: true, supervisors });
+  } catch (err) {
+    next(err);
+  }
+};

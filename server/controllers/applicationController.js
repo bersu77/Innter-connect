@@ -2,10 +2,11 @@ import Application from '../models/Application.js';
 import Internship from '../models/Internship.js';
 import Student from '../models/Student.js';
 import Company from '../models/Company.js';
+import Placement from '../models/Placement.js';
 import { logAudit } from '../services/audit.js';
 import { notify } from '../services/notification.js';
 
-// Application & Selection (PKG_05 / UC003, UC004, UC007, UC008, FR3, FR4, FR9, FR10).
+// Application & Selection (PKG_05 / UC003, UC004, UC007, UC008, UC016, UC017).
 
 // @route POST /api/applications  (student) — apply to an internship.
 export const applyToInternship = async (req, res, next) => {
@@ -181,6 +182,122 @@ export const updateApplicationStatus = async (req, res, next) => {
       });
     }
     res.json({ success: true, application });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @route PATCH /api/applications/:id/withdraw  (student, UC016) — withdraw before review.
+export const withdrawApplication = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ userId: req.user._id });
+    const application = await Application.findById(req.params.id);
+    if (!application) {
+      return res.status(404).json({ success: false, message: 'Application not found' });
+    }
+    if (!student || String(application.studentId) !== String(student._id)) {
+      return res.status(403).json({ success: false, message: 'This is not your application' });
+    }
+    // Business rule (PDF UC016): withdrawal only allowed before review.
+    if (application.status !== 'submitted') {
+      return res.status(400).json({
+        success: false,
+        message: 'Applications can only be withdrawn before they are reviewed',
+      });
+    }
+    application.status = 'withdrawn';
+    application.statusHistory.push({ status: 'withdrawn', changedBy: req.user._id });
+    await application.save();
+    await logAudit({
+      req,
+      action: 'APPLICATION_WITHDRAW',
+      entityType: 'Application',
+      entityId: application._id,
+    });
+    res.json({ success: true, application });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @route PATCH /api/applications/:id/respond-offer  (student, UC017) — accept / reject an offer.
+export const respondToOffer = async (req, res, next) => {
+  try {
+    const { decision } = req.body;
+    if (!['accept', 'reject'].includes(decision)) {
+      return res.status(400).json({ success: false, message: 'Invalid decision' });
+    }
+    const student = await Student.findOne({ userId: req.user._id });
+    const application = await Application.findById(req.params.id).populate('internshipId', 'title');
+    if (!application) {
+      return res.status(404).json({ success: false, message: 'Application not found' });
+    }
+    if (!student || String(application.studentId) !== String(student._id)) {
+      return res.status(403).json({ success: false, message: 'This is not your application' });
+    }
+    // Business rule (PDF UC017): one response per offer, decision is final.
+    if (application.status !== 'offered') {
+      return res.status(400).json({ success: false, message: 'There is no active offer to respond to' });
+    }
+
+    if (decision === 'reject') {
+      application.status = 'rejected';
+      application.statusHistory.push({
+        status: 'rejected',
+        changedBy: req.user._id,
+        note: 'Offer declined by student',
+      });
+      await application.save();
+      await logAudit({
+        req,
+        action: 'OFFER_DECLINE',
+        entityType: 'Application',
+        entityId: application._id,
+      });
+      return res.json({ success: true, application });
+    }
+
+    // Accept — create a Placement.
+    application.status = 'accepted';
+    application.statusHistory.push({
+      status: 'accepted',
+      changedBy: req.user._id,
+      note: 'Offer accepted by student',
+    });
+    await application.save();
+
+    let placement = await Placement.findOne({ applicationId: application._id });
+    if (!placement) {
+      placement = await Placement.create({
+        applicationId: application._id,
+        studentId: application.studentId,
+        internshipId: application.internshipId._id,
+        companyId: application.companyId,
+        universityId: application.universityId,
+        status: 'pending',
+        confirmedAt: new Date(),
+        confirmedBy: req.user._id,
+      });
+      await Internship.findByIdAndUpdate(application.internshipId._id, {
+        $inc: { filledPositions: 1 },
+      });
+    }
+    await logAudit({
+      req,
+      action: 'OFFER_ACCEPT',
+      entityType: 'Placement',
+      entityId: placement._id,
+    });
+    const company = await Company.findById(application.companyId);
+    if (company?.userId) {
+      await notify({
+        userId: company.userId,
+        type: 'placement',
+        title: 'Offer accepted',
+        message: `A student accepted your offer for "${application.internshipId?.title}".`,
+      });
+    }
+    res.json({ success: true, application, placement });
   } catch (err) {
     next(err);
   }
