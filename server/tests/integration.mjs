@@ -444,7 +444,69 @@ async function phase7() {
   );
 }
 
-const phases = [phase1, phase2, phase3, phase4, phase5, phase6, phase7];
+// ── Phase 8 — supervisor tasks & assessments ──
+async function phase8() {
+  lines.push('');
+  lines.push('Phase 8 — supervisor tasks & assessments');
+
+  const supLogin = await api('/api/auth/login', {
+    method: 'POST',
+    body: { email: 'daniel@zemen-tech.et', password: 'Password123!' },
+  });
+  ctx.supervisorToken = supLogin.json?.token;
+  check('supervisor can log in', supLogin.status === 200);
+
+  const task = await api('/api/tasks', {
+    method: 'POST',
+    token: ctx.supervisorToken,
+    body: { placementId: ctx.placementId, title: 'Set up the dev environment', description: 'Install required tools.' },
+  });
+  check('supervisor can assign a task', task.status === 201 && !!task.json?.task?.title);
+  ctx.taskId = task.json?.task?._id;
+
+  const studentTasks = await api('/api/tasks', { token: ctx.studentToken });
+  check(
+    'student sees assigned tasks',
+    studentTasks.status === 200 && studentTasks.json.tasks.some((t) => t._id === ctx.taskId),
+  );
+
+  const progress = await api(`/api/tasks/${ctx.taskId}/progress`, {
+    method: 'PATCH',
+    token: ctx.studentToken,
+    body: { status: 'in_progress', progressNote: 'Started working on it.' },
+  });
+  check('student can update task progress', progress.status === 200 && progress.json?.task?.status === 'in_progress');
+
+  const reqAssessment = await api('/api/assessments', {
+    method: 'POST',
+    token: ctx.studentToken,
+    body: { placementId: ctx.placementId },
+  });
+  check('student can request an assessment', reqAssessment.status === 201);
+  ctx.assessmentId = reqAssessment.json?.assessment?._id;
+
+  const supAssessments = await api('/api/assessments', { token: ctx.supervisorToken });
+  check(
+    'supervisor sees assessment requests',
+    supAssessments.status === 200 && supAssessments.json.assessments.some((a) => a._id === ctx.assessmentId),
+  );
+
+  const submit = await api(`/api/assessments/${ctx.assessmentId}`, {
+    method: 'PATCH',
+    token: ctx.supervisorToken,
+    body: { score: 88, remarks: 'Strong performance throughout the internship.' },
+  });
+  check('supervisor can submit an assessment', submit.status === 200 && submit.json?.assessment?.submitted === true);
+
+  const resubmit = await api(`/api/assessments/${ctx.assessmentId}`, {
+    method: 'PATCH',
+    token: ctx.supervisorToken,
+    body: { score: 50 },
+  });
+  check('a submitted assessment is immutable', resubmit.status === 400);
+}
+
+const phases = [phase1, phase2, phase3, phase4, phase5, phase6, phase7, phase8];
 
 async function main() {
   for (const phase of phases) {
