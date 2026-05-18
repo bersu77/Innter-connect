@@ -4,41 +4,115 @@ import { placementApi } from '../../api/placements';
 import { Badge, Button, Card, Select, Spinner } from '../../components/ui';
 
 const STATUS_TONE = { pending: 'warning', active: 'brand', completed: 'success', terminated: 'danger' };
+const tick = (done) => (done ? '✓' : '○');
 
-function AssignSupervisor({ placement, supervisors, onAssign }) {
-  const [value, setValue] = useState('');
+function PlacementCard({ placement: p, role, isSupervisor, supervisors, onReload }) {
   const [busy, setBusy] = useState(false);
+  const [supId, setSupId] = useState('');
+  const [error, setError] = useState('');
 
-  async function assign() {
-    if (!value) return;
+  async function run(fn) {
     setBusy(true);
+    setError('');
     try {
-      await onAssign(placement._id, value);
-    } finally {
+      await fn();
+      await onReload();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Action failed.');
       setBusy(false);
     }
   }
 
+  const studentName = p.studentId?.userId
+    ? `${p.studentId.userId.firstName} ${p.studentId.userId.lastName}`
+    : '—';
+
   return (
-    <div className="flex items-center gap-2">
-      <Select value={value} onChange={(e) => setValue(e.target.value)} className="w-44">
-        <option value="">Assign supervisor…</option>
-        {supervisors.map((s) => (
-          <option key={s._id} value={s._id}>
-            {s.firstName} {s.lastName}
-          </option>
-        ))}
-      </Select>
-      <Button size="sm" loading={busy} disabled={!value} onClick={assign}>
-        Assign
-      </Button>
-    </div>
+    <Card className="p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="font-semibold text-slate-800">{p.internshipId?.title || 'Internship'}</div>
+          <div className="text-sm text-slate-500">
+            {studentName} · {p.companyId?.name || ''}
+          </div>
+          <div className="mt-1 text-xs text-slate-400">
+            Supervisor:{' '}
+            {p.supervisorId ? `${p.supervisorId.firstName} ${p.supervisorId.lastName}` : 'not assigned'}
+          </div>
+        </div>
+        <Badge tone={STATUS_TONE[p.status]}>{p.status}</Badge>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
+        <span>{tick(p.finalReport?.submittedAt)} Final report</span>
+        <span>{tick(p.completionApprovedBySupervisor)} Supervisor confirmed</span>
+        <span>{tick(p.completionValidatedByUniversity)} University validated</span>
+      </div>
+
+      {error && <div className="mt-2 text-sm text-red-600">{error}</div>}
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {role === 'company' && !isSupervisor && !p.supervisorId && (
+          <div className="flex items-center gap-2">
+            <Select value={supId} onChange={(e) => setSupId(e.target.value)} className="w-44">
+              <option value="">Assign supervisor…</option>
+              {supervisors.map((s) => (
+                <option key={s._id} value={s._id}>
+                  {s.firstName} {s.lastName}
+                </option>
+              ))}
+            </Select>
+            <Button
+              size="sm"
+              loading={busy}
+              disabled={!supId}
+              onClick={() => run(() => placementApi.assignSupervisor(p._id, supId))}
+            >
+              Assign
+            </Button>
+          </div>
+        )}
+
+        {role === 'student' && p.status !== 'completed' && !p.finalReport?.submittedAt && (
+          <label className="cursor-pointer">
+            <span className="inline-flex h-9 items-center rounded-xl bg-brand-600 px-3.5 text-sm font-medium text-white transition-colors hover:bg-brand-700">
+              Submit final report
+            </span>
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) run(() => placementApi.submitReport(p._id, file));
+              }}
+            />
+          </label>
+        )}
+        {role === 'student' && p.finalReport?.submittedAt && (
+          <span className="text-xs text-slate-400">Report submitted: {p.finalReport.filename}</span>
+        )}
+
+        {isSupervisor && p.finalReport?.submittedAt && !p.completionApprovedBySupervisor && (
+          <Button size="sm" loading={busy} onClick={() => run(() => placementApi.confirmCompletion(p._id))}>
+            Confirm completion
+          </Button>
+        )}
+
+        {role === 'university' && p.completionApprovedBySupervisor && !p.completionValidatedByUniversity && (
+          <Button size="sm" loading={busy} onClick={() => run(() => placementApi.validateCompletion(p._id))}>
+            Validate completion
+          </Button>
+        )}
+      </div>
+    </Card>
   );
 }
 
 export default function PlacementsPage() {
   const { user } = useAuth();
-  const isCompany = (user?.userType ?? user?.role) === 'company';
+  const role = user?.userType ?? user?.role;
+  const isSupervisor = (user?.roles || []).includes('supervisor');
 
   const [placements, setPlacements] = useState([]);
   const [supervisors, setSupervisors] = useState([]);
@@ -48,9 +122,9 @@ export default function PlacementsPage() {
   async function load() {
     setLoading(true);
     try {
-      const tasks = [placementApi.list()];
-      if (isCompany) tasks.push(placementApi.supervisors());
-      const [placementRes, supervisorRes] = await Promise.all(tasks);
+      const requests = [placementApi.list()];
+      if (role === 'company' && !isSupervisor) requests.push(placementApi.supervisors());
+      const [placementRes, supervisorRes] = await Promise.all(requests);
       setPlacements(placementRes.placements || []);
       if (supervisorRes) setSupervisors(supervisorRes.supervisors || []);
     } catch (err) {
@@ -64,24 +138,12 @@ export default function PlacementsPage() {
     load();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function assignSupervisor(placementId, supervisorId) {
-    setError('');
-    try {
-      await placementApi.assignSupervisor(placementId, supervisorId);
-      await load();
-    } catch (err) {
-      setError(err.response?.data?.message || 'Could not assign supervisor.');
-    }
-  }
-
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Placements</h1>
         <p className="mt-1 text-sm text-slate-500">
-          {isCompany
-            ? 'Confirmed internships — assign supervisors and track progress.'
-            : 'Confirmed internship placements.'}
+          Confirmed internships — supervision, final reports, and completion.
         </p>
       </div>
 
@@ -98,36 +160,14 @@ export default function PlacementsPage() {
       ) : (
         <div className="space-y-3">
           {placements.map((p) => (
-            <Card key={p._id} className="flex flex-wrap items-center justify-between gap-3 p-5">
-              <div className="min-w-0">
-                <div className="font-semibold text-slate-800">
-                  {p.internshipId?.title || 'Internship'}
-                </div>
-                <div className="text-sm text-slate-500">
-                  {p.studentId?.userId
-                    ? `${p.studentId.userId.firstName} ${p.studentId.userId.lastName}`
-                    : '—'}
-                  {' · '}
-                  {p.companyId?.name || ''}
-                </div>
-                <div className="mt-1 text-xs text-slate-400">
-                  Supervisor:{' '}
-                  {p.supervisorId
-                    ? `${p.supervisorId.firstName} ${p.supervisorId.lastName}`
-                    : 'not assigned'}
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Badge tone={STATUS_TONE[p.status]}>{p.status}</Badge>
-                {isCompany && !p.supervisorId && (
-                  <AssignSupervisor
-                    placement={p}
-                    supervisors={supervisors}
-                    onAssign={assignSupervisor}
-                  />
-                )}
-              </div>
-            </Card>
+            <PlacementCard
+              key={p._id}
+              placement={p}
+              role={role}
+              isSupervisor={isSupervisor}
+              supervisors={supervisors}
+              onReload={load}
+            />
           ))}
         </div>
       )}

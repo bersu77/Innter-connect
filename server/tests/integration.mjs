@@ -506,7 +506,44 @@ async function phase8() {
   check('a submitted assessment is immutable', resubmit.status === 400);
 }
 
-const phases = [phase1, phase2, phase3, phase4, phase5, phase6, phase7, phase8];
+// ── Phase 9 — internship completion & reports ──
+async function phase9() {
+  lines.push('');
+  lines.push('Phase 9 — internship completion & reports');
+
+  const fd = new FormData();
+  fd.append(
+    'report',
+    new Blob(['Final internship report content.'], { type: 'application/pdf' }),
+    'final-report.pdf',
+  );
+  const reportRes = await fetch(`${BASE}/api/placements/${ctx.placementId}/report`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${ctx.studentToken}` },
+    body: fd,
+  });
+  check('student can submit a final report', reportRes.status === 200);
+
+  const confirm = await api(`/api/placements/${ctx.placementId}/confirm-completion`, {
+    method: 'PATCH',
+    token: ctx.supervisorToken,
+  });
+  check(
+    'supervisor can confirm completion',
+    confirm.status === 200 && confirm.json?.placement?.completionApprovedBySupervisor === true,
+  );
+
+  const validate = await api(`/api/placements/${ctx.placementId}/validate-completion`, {
+    method: 'PATCH',
+    token: ctx.universityToken,
+  });
+  check(
+    'university validates completion (internship completed)',
+    validate.status === 200 && validate.json?.placement?.status === 'completed',
+  );
+}
+
+const phases = [phase1, phase2, phase3, phase4, phase5, phase6, phase7, phase8, phase9];
 
 async function main() {
   for (const phase of phases) {

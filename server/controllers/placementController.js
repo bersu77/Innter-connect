@@ -6,7 +6,7 @@ import User from '../models/User.js';
 import { logAudit } from '../services/audit.js';
 import { notify } from '../services/notification.js';
 
-// Placement management (PKG_05 / UC009).
+// Placement management (PKG_05 / UC009, UC018).
 
 // @route GET /api/placements  — scoped to the caller's role.
 export const listPlacements = async (req, res, next) => {
@@ -82,6 +82,129 @@ export const assignSupervisor = async (req, res, next) => {
         type: 'placement',
         title: 'Supervisor assigned',
         message: `${supervisor.firstName} ${supervisor.lastName} will supervise your internship.`,
+      });
+    }
+    res.json({ success: true, placement });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @route POST /api/placements/:id/report  (student, UC018) — submit the final report.
+export const submitFinalReport = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No report file uploaded' });
+    }
+    const student = await Student.findOne({ userId: req.user._id });
+    const placement = await Placement.findById(req.params.id);
+    if (!placement) return res.status(404).json({ success: false, message: 'Placement not found' });
+    if (!student || String(placement.studentId) !== String(student._id)) {
+      return res.status(403).json({ success: false, message: 'This is not your placement' });
+    }
+
+    placement.finalReport = {
+      filename: req.file.originalname,
+      path: `/uploads/${req.file.filename}`,
+      submittedAt: new Date(),
+    };
+    await placement.save();
+
+    await logAudit({
+      req,
+      action: 'FINAL_REPORT_SUBMIT',
+      entityType: 'Placement',
+      entityId: placement._id,
+    });
+    if (placement.supervisorId) {
+      await notify({
+        userId: placement.supervisorId,
+        type: 'placement',
+        title: 'Final report submitted',
+        message: 'A student has submitted their final internship report for review.',
+      });
+    }
+    res.json({ success: true, placement });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @route PATCH /api/placements/:id/confirm-completion  (supervisor, UC018)
+export const confirmCompletion = async (req, res, next) => {
+  try {
+    const placement = await Placement.findById(req.params.id);
+    if (!placement) return res.status(404).json({ success: false, message: 'Placement not found' });
+    if (String(placement.supervisorId) !== String(req.user._id)) {
+      return res
+        .status(403)
+        .json({ success: false, message: 'You are not the supervisor for this placement' });
+    }
+    if (!placement.finalReport?.submittedAt) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'The student has not submitted a final report yet' });
+    }
+
+    placement.completionApprovedBySupervisor = true;
+    await placement.save();
+
+    await logAudit({
+      req,
+      action: 'COMPLETION_CONFIRM',
+      entityType: 'Placement',
+      entityId: placement._id,
+    });
+    if (placement.universityId) {
+      const university = await University.findById(placement.universityId);
+      if (university?.userId) {
+        await notify({
+          userId: university.userId,
+          type: 'placement',
+          title: 'Completion awaiting validation',
+          message: 'A supervisor confirmed an internship completion — please validate it.',
+        });
+      }
+    }
+    res.json({ success: true, placement });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @route PATCH /api/placements/:id/validate-completion  (university, UC018)
+export const validateCompletion = async (req, res, next) => {
+  try {
+    const university = await University.findOne({ userId: req.user._id });
+    const placement = await Placement.findById(req.params.id);
+    if (!placement) return res.status(404).json({ success: false, message: 'Placement not found' });
+    if (!university || String(placement.universityId) !== String(university._id)) {
+      return res.status(403).json({ success: false, message: 'This is not your university placement' });
+    }
+    if (!placement.completionApprovedBySupervisor) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'The supervisor has not confirmed completion yet' });
+    }
+
+    placement.completionValidatedByUniversity = true;
+    placement.status = 'completed';
+    placement.endDate = new Date();
+    await placement.save();
+
+    await logAudit({
+      req,
+      action: 'COMPLETION_VALIDATE',
+      entityType: 'Placement',
+      entityId: placement._id,
+    });
+    const student = await Student.findById(placement.studentId);
+    if (student?.userId) {
+      await notify({
+        userId: student.userId,
+        type: 'placement',
+        title: 'Internship completed',
+        message: 'Your internship has been completed and validated by your university.',
       });
     }
     res.json({ success: true, placement });
