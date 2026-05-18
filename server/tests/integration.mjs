@@ -543,7 +543,54 @@ async function phase9() {
   );
 }
 
-const phases = [phase1, phase2, phase3, phase4, phase5, phase6, phase7, phase8, phase9];
+// ── Phase 10 — notifications & dashboards ──
+async function phase10() {
+  lines.push('');
+  lines.push('Phase 10 — notifications & dashboards');
+
+  const studentDash = await api('/api/dashboard', { token: ctx.studentToken });
+  check('student dashboard returns stats', studentDash.status === 200 && !!studentDash.json?.stats);
+
+  const companyDash = await api('/api/dashboard', { token: ctx.companyToken });
+  check(
+    'company dashboard returns stats',
+    companyDash.status === 200 && typeof companyDash.json?.stats?.internships === 'number',
+  );
+
+  const adminDash = await api('/api/dashboard', { token: ctx.adminToken });
+  check(
+    'admin dashboard returns stats',
+    adminDash.status === 200 && typeof adminDash.json?.stats?.users === 'number',
+  );
+
+  const notifs = await api('/api/notifications', { token: ctx.studentToken });
+  check(
+    'student has notifications from prior events',
+    notifs.status === 200 && notifs.json.notifications.length > 0,
+  );
+
+  const markAll = await api('/api/notifications/read-all', {
+    method: 'PATCH',
+    token: ctx.studentToken,
+  });
+  check('mark-all-read succeeds', markAll.status === 200);
+
+  const after = await api('/api/notifications', { token: ctx.studentToken });
+  check('unread count is zero after mark-all-read', after.status === 200 && after.json.unread === 0);
+}
+
+const phases = [
+  phase1,
+  phase2,
+  phase3,
+  phase4,
+  phase5,
+  phase6,
+  phase7,
+  phase8,
+  phase9,
+  phase10,
+];
 
 async function main() {
   for (const phase of phases) {

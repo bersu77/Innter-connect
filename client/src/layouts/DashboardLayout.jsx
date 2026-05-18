@@ -18,6 +18,7 @@ import {
   Star,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import NotificationBell from '../components/NotificationBell';
 
 const dashboard = { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true };
 const placements = { to: '/dashboard/placements', label: 'Placements', icon: Award };
@@ -115,6 +116,7 @@ export default function DashboardLayout() {
         <header className="flex h-16 items-center justify-between border-b border-slate-200/70 bg-white/80 px-6 backdrop-blur-glass">
           <span className="text-sm capitalize text-slate-400">{role} workspace</span>
           <div className="flex items-center gap-3">
+            <NotificationBell />
             <span className="hidden text-sm font-medium text-slate-600 sm:block">{name}</span>
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white">
               {(name[0] || 'U').toUpperCase()}
