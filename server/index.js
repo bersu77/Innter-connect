@@ -12,6 +12,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import verificationRoutes from './routes/verificationRoutes.js';
 import internshipRoutes from './routes/internshipRoutes.js';
 import invitationRoutes from './routes/invitationRoutes.js';
+import applicationRoutes from './routes/applicationRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 
 const app = express();
@@ -43,6 +44,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/verifications', verificationRoutes);
 app.use('/api/internships', internshipRoutes);
 app.use('/api/invitations', invitationRoutes);
+app.use('/api/applications', applicationRoutes);
 
 // Error handler (must be last)
 app.use(errorHandler);

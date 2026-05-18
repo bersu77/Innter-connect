@@ -312,7 +312,71 @@ async function phase5() {
   );
 }
 
-const phases = [phase1, phase2, phase3, phase4, phase5];
+// ── Phase 6 — applications & selection ──
+async function phase6() {
+  lines.push('');
+  lines.push('Phase 6 — applications & selection');
+
+  const posted = await api('/api/internships', {
+    method: 'POST',
+    token: ctx.companyToken,
+    body: { title: 'DevOps Intern', description: 'CI/CD and cloud infrastructure.', status: 'active', position: { type: 'remote' } },
+  });
+  const internshipId = posted.json?.internship?._id;
+
+  const apply = await api('/api/applications', {
+    method: 'POST',
+    token: ctx.studentToken,
+    body: { internshipId, coverLetter: 'I am keen on DevOps and automation.' },
+  });
+  check('student can apply to an internship', apply.status === 201 && apply.json?.application?.status === 'submitted');
+  ctx.applicationId = apply.json?.application?._id;
+
+  const dup = await api('/api/applications', {
+    method: 'POST',
+    token: ctx.studentToken,
+    body: { internshipId, coverLetter: 'again' },
+  });
+  check('duplicate application is rejected', dup.status === 400);
+
+  const mine = await api('/api/applications', { token: ctx.studentToken });
+  check(
+    'student can track their applications',
+    mine.status === 200 && mine.json.applications.some((a) => a._id === ctx.applicationId),
+  );
+
+  const received = await api('/api/applications', { token: ctx.companyToken });
+  check(
+    'company sees received applications',
+    received.status === 200 && received.json.applications.some((a) => a._id === ctx.applicationId),
+  );
+
+  const review = await api(`/api/applications/${ctx.applicationId}/status`, {
+    method: 'PATCH',
+    token: ctx.companyToken,
+    body: { status: 'under_review' },
+  });
+  check('company can move an application to review', review.status === 200 && review.json?.application?.status === 'under_review');
+
+  const shortlist = await api(`/api/applications/${ctx.applicationId}/status`, {
+    method: 'PATCH',
+    token: ctx.companyToken,
+    body: { status: 'shortlisted' },
+  });
+  check('company can shortlist an application', shortlist.status === 200 && shortlist.json?.application?.status === 'shortlisted');
+
+  const blocked = await api(`/api/applications/${ctx.applicationId}/status`, {
+    method: 'PATCH',
+    token: ctx.studentToken,
+    body: { status: 'rejected' },
+  });
+  check('student cannot change application status (RBAC)', blocked.status === 403);
+
+  const detail = await api(`/api/applications/${ctx.applicationId}`, { token: ctx.companyToken });
+  check('application detail includes status history', detail.status === 200 && (detail.json?.application?.statusHistory?.length || 0) >= 1);
+}
+
+const phases = [phase1, phase2, phase3, phase4, phase5, phase6];
 
 async function main() {
   for (const phase of phases) {
