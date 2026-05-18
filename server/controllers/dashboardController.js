@@ -4,17 +4,36 @@ import University from '../models/University.js';
 import Internship from '../models/Internship.js';
 import Application from '../models/Application.js';
 import Placement from '../models/Placement.js';
+import Task from '../models/Task.js';
+import Assessment from '../models/Assessment.js';
 import Notification from '../models/Notification.js';
 import User from '../models/User.js';
 
 // @route GET /api/dashboard  — role-aware dashboard summary (UC019 + FR dashboards).
 export const getDashboard = async (req, res, next) => {
   try {
-    const role = req.user.userType;
+    const isSupervisor =
+      req.user.userType === 'company' && (req.user.roles || []).includes('supervisor');
+    const role = isSupervisor ? 'supervisor' : req.user.userType;
     const unread = await Notification.countDocuments({ userId: req.user._id, read: false });
     let stats = {};
 
-    if (role === 'student') {
+    if (isSupervisor) {
+      stats = {
+        interns: await Placement.countDocuments({ supervisorId: req.user._id }),
+        activeInterns: await Placement.countDocuments({
+          supervisorId: req.user._id,
+          status: 'active',
+        }),
+        tasksAssigned: await Task.countDocuments({ assignedBy: req.user._id }),
+        tasksToGrade: await Task.countDocuments({
+          assignedBy: req.user._id,
+          status: 'completed',
+          gradedAt: { $exists: false },
+        }),
+        assessments: await Assessment.countDocuments({ supervisorId: req.user._id }),
+      };
+    } else if (role === 'student') {
       const student = await Student.findOne({ userId: req.user._id });
       if (student) {
         const applications = await Application.find({ studentId: student._id });

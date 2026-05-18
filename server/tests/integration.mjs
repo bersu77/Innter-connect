@@ -657,6 +657,89 @@ async function phase13() {
   check('invalid identifiers produce a clean 400', badId.status === 400);
 }
 
+// ── Supervisor workspace, appeals & multi-format export ──
+async function supervisorWorkspace() {
+  lines.push('');
+  lines.push('Supervisor workspace, appeals & export');
+
+  const supLogin = await api('/api/auth/login', {
+    method: 'POST',
+    body: { username: 'daniel', password: 'Password123!' },
+  });
+  check(
+    'supervisor logs in by username',
+    supLogin.status === 200 && (supLogin.json?.user?.roles || []).includes('supervisor'),
+  );
+  const supToken = supLogin.json?.token;
+
+  const uname = `sup.${Date.now()}`;
+  const created = await api('/api/companies/supervisors', {
+    method: 'POST',
+    token: ctx.companyToken,
+    body: { firstName: 'New', lastName: 'Supervisor', username: uname, password: 'Password123!' },
+  });
+  check('manager can create a supervisor', created.status === 201 && created.json?.supervisor?.username === uname);
+
+  const newSupLogin = await api('/api/auth/login', {
+    method: 'POST',
+    body: { username: uname, password: 'Password123!' },
+  });
+  check('created supervisor can log in', newSupLogin.status === 200);
+
+  const supList = await api('/api/companies/supervisors', { token: ctx.companyToken });
+  check(
+    'manager lists company supervisors',
+    supList.status === 200 && supList.json.supervisors.some((s) => s.username === uname),
+  );
+
+  const supTasks = await api('/api/tasks', { token: supToken });
+  const gradable = supTasks.json?.tasks?.[0];
+  const graded = gradable
+    ? await api(`/api/tasks/${gradable._id}/grade`, {
+        method: 'PATCH',
+        token: supToken,
+        body: { score: 90, feedback: 'Excellent work.' },
+      })
+    : { status: 0, json: {} };
+  check('supervisor can grade a task', graded.status === 200 && graded.json?.task?.score === 90);
+
+  const supPlacements = await api('/api/placements', { token: supToken });
+  const thread = supPlacements.json?.placements?.[0];
+  const msgs = thread
+    ? await api(`/api/placements/${thread._id}/messages`, { token: supToken })
+    : { status: 0, json: {} };
+  check('supervisor can read a message thread', msgs.status === 200 && Array.isArray(msgs.json?.messages));
+  const sent = thread
+    ? await api(`/api/placements/${thread._id}/messages`, {
+        method: 'POST',
+        token: supToken,
+        body: { body: 'How is the task going?' },
+      })
+    : { status: 0 };
+  check('supervisor can send a message', sent.status === 201);
+
+  const cred = await api('/api/auth/credentials', {
+    method: 'PATCH',
+    token: ctx.studentToken,
+    body: { username: `dawit.${Date.now()}` },
+  });
+  check('user can change own credentials', cred.status === 200);
+
+  const appeals = await api('/api/verifications/appeals', { token: ctx.adminToken });
+  check('admin can list verification appeals', appeals.status === 200 && appeals.json.appeals.length > 0);
+
+  const uniReport = await api('/api/reports', { method: 'POST', token: ctx.universityToken });
+  const rid = uniReport.json?.report?._id;
+  const xlsx = await fetch(`${BASE}/api/reports/${rid}/export?format=xlsx`, {
+    headers: { Authorization: `Bearer ${ctx.universityToken}` },
+  });
+  check('report exports as xlsx', xlsx.status === 200);
+  const pdf = await fetch(`${BASE}/api/reports/${rid}/export?format=pdf`, {
+    headers: { Authorization: `Bearer ${ctx.universityToken}` },
+  });
+  check('report exports as pdf', pdf.status === 200);
+}
+
 const phases = [
   phase1,
   phase2,
@@ -671,6 +754,7 @@ const phases = [
   phase11,
   phase12,
   phase13,
+  supervisorWorkspace,
 ];
 
 async function main() {

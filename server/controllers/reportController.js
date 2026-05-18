@@ -123,24 +123,87 @@ export const getReport = async (req, res, next) => {
   }
 };
 
-// @route GET /api/reports/:id/export  — download as CSV.
+// @route GET /api/reports/:id/export?format=csv|xlsx|pdf
 export const exportReport = async (req, res, next) => {
   try {
     const report = await Report.findOne({ _id: req.params.id, generatedBy: req.user._id });
     if (!report) return res.status(404).json({ success: false, message: 'Report not found' });
+
+    const format = String(req.query.format || 'csv').toLowerCase();
     const rows = report.payload?.rows || [];
-    if (rows.length === 0) {
-      return res.status(400).json({ success: false, message: 'No tabular data to export' });
+    const summary = report.payload?.summary || {};
+    const headers = rows.length ? Object.keys(rows[0]) : [];
+    const fileBase = `report-${report._id}`;
+    await logAudit({
+      req,
+      action: 'REPORT_EXPORT',
+      entityType: 'Report',
+      entityId: report._id,
+      metadata: { format },
+    });
+
+    if (format === 'csv') {
+      if (rows.length === 0) {
+        return res.status(400).json({ success: false, message: 'No tabular data to export' });
+      }
+      const csv = [
+        headers.join(','),
+        ...rows.map((row) => headers.map((h) => JSON.stringify(row[h] ?? '')).join(',')),
+      ].join('\n');
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileBase}.csv"`);
+      return res.send(csv);
     }
-    const headers = Object.keys(rows[0]);
-    const csv = [
-      headers.join(','),
-      ...rows.map((row) => headers.map((h) => JSON.stringify(row[h] ?? '')).join(',')),
-    ].join('\n');
-    await logAudit({ req, action: 'REPORT_EXPORT', entityType: 'Report', entityId: report._id });
-    res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="report-${report._id}.csv"`);
-    res.send(csv);
+
+    if (format === 'xlsx') {
+      const { default: ExcelJS } = await import('exceljs');
+      const wb = new ExcelJS.Workbook();
+      const ws = wb.addWorksheet('Report');
+      ws.addRow([report.title || 'Report']);
+      ws.addRow([]);
+      ws.addRow(['Summary']);
+      for (const [k, v] of Object.entries(summary)) ws.addRow([k, v]);
+      if (rows.length) {
+        ws.addRow([]);
+        ws.addRow(headers);
+        for (const row of rows) ws.addRow(headers.map((h) => row[h]));
+      }
+      res.setHeader(
+        'Content-Type',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      res.setHeader('Content-Disposition', `attachment; filename="${fileBase}.xlsx"`);
+      await wb.xlsx.write(res);
+      return res.end();
+    }
+
+    if (format === 'pdf') {
+      const { default: PDFDocument } = await import('pdfkit');
+      const doc = new PDFDocument({ margin: 50 });
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileBase}.pdf"`);
+      doc.pipe(res);
+      doc.fontSize(18).text(report.title || 'Report');
+      doc.moveDown(0.5);
+      doc.fontSize(10).fillColor('#64748b')
+        .text(`Generated: ${new Date(report.generatedAt).toLocaleString()}`);
+      doc.moveDown().fillColor('#0f172a').fontSize(13).text('Summary');
+      doc.fontSize(11).fillColor('#334155');
+      for (const [k, v] of Object.entries(summary)) doc.text(`${k}: ${v}`);
+      if (rows.length) {
+        doc.moveDown().fillColor('#0f172a').fontSize(13).text('Details');
+        doc.fontSize(10).fillColor('#334155');
+        doc.text(headers.join('   |   '));
+        doc.moveDown(0.2);
+        for (const row of rows) {
+          doc.text(headers.map((h) => String(row[h] ?? '')).join('   |   '));
+        }
+      }
+      doc.end();
+      return undefined;
+    }
+
+    return res.status(400).json({ success: false, message: 'Unsupported export format' });
   } catch (err) {
     next(err);
   }

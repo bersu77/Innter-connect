@@ -16,6 +16,7 @@ import {
   Assessment,
   Report,
   Invitation,
+  Message,
 } from '../models/index.js';
 
 // Seed script — populates a rich, reproducible demo dataset.
@@ -46,6 +47,7 @@ async function seed() {
     Assessment.deleteMany({}),
     Report.deleteMany({}),
     Invitation.deleteMany({}),
+    Message.deleteMany({}),
   ]);
   console.log('Cleared all collections');
 
@@ -99,10 +101,6 @@ async function seed() {
       firstName: mFirst, lastName: mLast, email: mEmail, password: PW,
       userType: 'company', verificationStatus: 'verified', profileComplete: true,
     });
-    const sup = await User.create({
-      firstName: sFirst, lastName: sLast, email: sEmail, password: PW,
-      userType: 'company', roles: ['supervisor'], verificationStatus: 'verified', profileComplete: true,
-    });
     const company = await Company.create({
       userId: mgr._id, name, email: mEmail, industry, country: 'Ethiopia', city,
       employees: pick(['11-50', '51-200', '201-500'], i), founded: 2012 + i,
@@ -110,6 +108,14 @@ async function seed() {
       description: `${name} is an Ethiopian ${industry.toLowerCase()} company that hosts student interns.`,
       verified: true, verificationDate: ago(50), verifiedBy: admin._id,
       recruiters: [mgr._id], status: 'active', totalInternsHired: 3 + i,
+    });
+    mgr.companyId = company._id;
+    await mgr.save();
+    // Supervisor — created by the company; logs in with a username.
+    const sup = await User.create({
+      firstName: sFirst, lastName: sLast, email: sEmail, username: sFirst.toLowerCase(),
+      password: PW, userType: 'company', roles: ['supervisor'], companyId: company._id,
+      verificationStatus: 'verified', profileComplete: true,
     });
     companies.push({ company, mgr, sup });
   }
@@ -237,12 +243,18 @@ async function seed() {
     const { placement, student, company } = placements[p];
     for (let t = 0; t < 5; t += 1) {
       const status = TASK_STATUS[t];
+      const graded = status === 'completed';
       await Task.create({
         placementId: placement._id, studentId: student.st._id, assignedBy: company.sup._id,
-        title: pick(TASK_TITLES, p + t), description: 'Complete this task and keep its progress updated.',
-        deadline: days(3 + t * 5), status,
+        title: pick(TASK_TITLES, p + t),
+        description: 'Complete this task to the described standard. Graded on correctness and clarity.',
+        deadline: days(3 + t * 5), status, maxScore: 100,
         progressNote: status === 'completed' ? 'Completed and reviewed.' : status === 'in_progress' ? 'Work in progress.' : '',
         completedAt: status === 'completed' ? ago(1) : undefined,
+        score: graded ? 80 + ((p + t) % 16) : undefined,
+        feedback: graded ? 'Good work — well structured and delivered on time.' : undefined,
+        gradedAt: graded ? ago(1) : undefined,
+        gradedBy: graded ? company.sup._id : undefined,
       });
       taskCount += 1;
     }
@@ -264,6 +276,19 @@ async function seed() {
     });
   }
 
+  // ── Messages — a thread per placement (intern ↔ supervisor) ──
+  for (let p = 0; p < placements.length; p += 1) {
+    const { placement, student, company } = placements[p];
+    const convo = [
+      ['supervisor', company.sup._id, 'Welcome aboard! Let me know if you have questions about your first task.'],
+      ['student', student.user._id, 'Thank you! I have started setting up the environment.'],
+      ['supervisor', company.sup._id, 'Great — share a screenshot once the build runs.'],
+    ];
+    for (const [senderRole, senderId, body] of convo) {
+      await Message.create({ placementId: placement._id, senderId, senderRole, body });
+    }
+  }
+
   // ── Verification records (universities, companies, verified students) ──
   for (const { uni, coord } of universities) {
     await Verification.create({
@@ -283,6 +308,21 @@ async function seed() {
       status: 'approved', remarks: 'Academic standing verified.', requestedAt: ago(32), reviewedAt: ago(30),
     });
   }
+
+  // ── A rejected verification + a pending appeal (demo for the appeals workflow) ──
+  const appealStudent = students[4]; // Kalkidan — left pending
+  const rejectedVerification = await Verification.create({
+    entityType: 'student', entityId: appealStudent.st._id,
+    requestedBy: appealStudent.user._id, reviewedBy: appealStudent.coord._id,
+    status: 'rejected', rejectionReason: 'The submitted transcript was unclear.',
+    remarks: 'Please resubmit a clearer copy of your transcript.',
+    requestedAt: ago(20), reviewedAt: ago(18),
+  });
+  await VerificationAppeal.create({
+    verificationId: rejectedVerification._id, submittedBy: appealStudent.user._id,
+    reason: 'My transcript is official and stamped by the registrar — please reconsider.',
+    status: 'pending', submittedAt: ago(15),
+  });
 
   // ── Invitations — each university invites 2 companies ──
   for (let u = 0; u < universities.length; u += 1) {
@@ -386,11 +426,12 @@ async function seed() {
   console.log(`  Notifications: ${await Notification.countDocuments()}`);
   console.log(`  Audit logs:    ${await AuditLog.countDocuments()}`);
   console.log(`  Reports:       ${await Report.countDocuments()}`);
+  console.log(`  Messages:      ${await Message.countDocuments()}`);
   console.log('\nDemo logins (password for all: Password123!):');
   console.log('  admin@internconnect.et       — admin');
   console.log('  coordinator@aau.edu.et       — university');
-  console.log('  hr@zemen-tech.et             — company');
-  console.log('  daniel@zemen-tech.et         — company (supervisor)');
+  console.log('  hr@zemen-tech.et             — company manager');
+  console.log('  daniel  (or daniel@zemen-tech.et) — supervisor (logs in by username)');
   console.log('  dawit@aau.edu.et             — student (verified)');
   console.log('  alex@aau.edu.et              — student (pending)');
 

@@ -18,6 +18,13 @@ const STAT_LABELS = {
     toReview: 'Awaiting review',
     placements: 'Placements',
   },
+  supervisor: {
+    interns: 'Assigned interns',
+    activeInterns: 'Active interns',
+    tasksAssigned: 'Tasks assigned',
+    tasksToGrade: 'Tasks to grade',
+    assessments: 'Assessments',
+  },
   university: {
     students: 'Registered students',
     verifiedStudents: 'Verified students',

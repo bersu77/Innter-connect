@@ -9,7 +9,7 @@ import { notify } from '../services/notification.js';
 // @route POST /api/tasks  (supervisor) — assign a task to a placement.
 export const createTask = async (req, res, next) => {
   try {
-    const { placementId, title, description, deadline } = req.body;
+    const { placementId, title, description, deadline, maxScore } = req.body;
     if (!title) return res.status(400).json({ success: false, message: 'Task title is required' });
 
     const placement = await Placement.findById(placementId).populate('studentId', 'userId');
@@ -29,6 +29,7 @@ export const createTask = async (req, res, next) => {
       title,
       description,
       deadline,
+      maxScore: maxScore === undefined || maxScore === '' ? 100 : Number(maxScore),
     });
     await logAudit({ req, action: 'TASK_ASSIGN', entityType: 'Task', entityId: task._id });
     if (placement.studentId?.userId) {
@@ -98,6 +99,51 @@ export const updateProgress = async (req, res, next) => {
         type: 'task',
         title: 'Task progress updated',
         message: `A student marked "${task.title}" as ${status.replace('_', ' ')}.`,
+      });
+    }
+    res.json({ success: true, task });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @route PATCH /api/tasks/:id/grade  (supervisor) — award a score and leave feedback.
+export const gradeTask = async (req, res, next) => {
+  try {
+    const { score, feedback } = req.body;
+    const task = await Task.findById(req.params.id).populate({
+      path: 'studentId',
+      select: 'userId',
+    });
+    if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
+    if (String(task.assignedBy) !== String(req.user._id)) {
+      return res
+        .status(403)
+        .json({ success: false, message: 'Only the assigning supervisor can grade this task' });
+    }
+    if (score !== undefined && score !== '') {
+      const numeric = Number(score);
+      if (Number.isNaN(numeric) || numeric < 0 || numeric > task.maxScore) {
+        return res
+          .status(400)
+          .json({ success: false, message: `Score must be between 0 and ${task.maxScore}` });
+      }
+      task.score = numeric;
+    }
+    if (feedback !== undefined) task.feedback = feedback;
+    task.gradedAt = new Date();
+    task.gradedBy = req.user._id;
+    await task.save();
+
+    await logAudit({ req, action: 'TASK_GRADE', entityType: 'Task', entityId: task._id });
+    if (task.studentId?.userId) {
+      await notify({
+        userId: task.studentId.userId,
+        type: 'task',
+        title: 'Task graded',
+        message: `Your supervisor graded "${task.title}"${
+          task.score != null ? ` — ${task.score}/${task.maxScore}` : ''
+        }.`,
       });
     }
     res.json({ success: true, task });

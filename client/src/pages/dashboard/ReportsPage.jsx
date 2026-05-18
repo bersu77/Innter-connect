@@ -106,12 +106,19 @@ export default function ReportsPage() {
             <div className="space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-lg font-semibold tracking-tight">{selected.title}</h2>
-                {rows.length > 0 && (
-                  <Button variant="secondary" size="sm" onClick={() => reportApi.exportCsv(selected._id)}>
-                    <Download className="h-4 w-4" />
-                    Export CSV
-                  </Button>
-                )}
+                <div className="flex gap-2">
+                  {['csv', 'xlsx', 'pdf'].map((fmt) => (
+                    <Button
+                      key={fmt}
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => reportApi.download(selected._id, fmt)}
+                    >
+                      <Download className="h-4 w-4" />
+                      {fmt.toUpperCase()}
+                    </Button>
+                  ))}
+                </div>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

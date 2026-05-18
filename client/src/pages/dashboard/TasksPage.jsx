@@ -7,6 +7,48 @@ import { Badge, Button, Card, Input, Select, Spinner, Textarea } from '../../com
 const TONE = { assigned: 'neutral', in_progress: 'brand', completed: 'success', overdue: 'danger' };
 const label = (s) => (s || '').replace(/_/g, ' ');
 
+// Supervisor grading panel for one task.
+function GradeForm({ task, onGrade }) {
+  const [score, setScore] = useState(task.score ?? '');
+  const [feedback, setFeedback] = useState(task.feedback || '');
+  const [busy, setBusy] = useState(false);
+
+  async function submit() {
+    setBusy(true);
+    try {
+      await onGrade(task._id, score, feedback);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="mt-3 grid gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2">
+      <Input
+        label={`Score (out of ${task.maxScore ?? 100})`}
+        type="number"
+        min="0"
+        max={task.maxScore ?? 100}
+        value={score}
+        onChange={(e) => setScore(e.target.value)}
+      />
+      <div className="flex items-end">
+        <Button size="sm" loading={busy} onClick={submit}>
+          {task.gradedAt ? 'Update grade' : 'Grade task'}
+        </Button>
+      </div>
+      <Textarea
+        className="sm:col-span-2"
+        label="Feedback / comment"
+        rows={2}
+        value={feedback}
+        onChange={(e) => setFeedback(e.target.value)}
+        placeholder="Comment on the student's work…"
+      />
+    </div>
+  );
+}
+
 export default function TasksPage() {
   const { user } = useAuth();
   const isStudent = (user?.userType ?? user?.role) === 'student';
@@ -16,7 +58,13 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState('');
-  const [form, setForm] = useState({ placementId: '', title: '', description: '', deadline: '' });
+  const [form, setForm] = useState({
+    placementId: '',
+    title: '',
+    description: '',
+    deadline: '',
+    maxScore: 100,
+  });
   const [creating, setCreating] = useState(false);
 
   async function load() {
@@ -52,6 +100,16 @@ export default function TasksPage() {
     }
   }
 
+  async function grade(id, score, feedback) {
+    setError('');
+    try {
+      await taskApi.grade(id, score, feedback);
+      await load();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not grade the task.');
+    }
+  }
+
   async function createTask(e) {
     e.preventDefault();
     setError('');
@@ -61,8 +119,12 @@ export default function TasksPage() {
     }
     setCreating(true);
     try {
-      await taskApi.create({ ...form, deadline: form.deadline || undefined });
-      setForm({ placementId: '', title: '', description: '', deadline: '' });
+      await taskApi.create({
+        ...form,
+        deadline: form.deadline || undefined,
+        maxScore: Number(form.maxScore) || 100,
+      });
+      setForm({ placementId: '', title: '', description: '', deadline: '', maxScore: 100 });
       await load();
     } catch (err) {
       setError(err.response?.data?.message || 'Could not create the task.');
@@ -79,8 +141,8 @@ export default function TasksPage() {
         <h1 className="text-2xl font-semibold tracking-tight">Tasks</h1>
         <p className="mt-1 text-sm text-slate-500">
           {isStudent
-            ? 'Tasks assigned to you by your supervisor.'
-            : 'Assign and monitor tasks for the interns you supervise.'}
+            ? 'Tasks assigned by your supervisor — update progress and see your grades.'
+            : 'Assign, monitor, and grade tasks for the interns you supervise.'}
         </p>
       </div>
 
@@ -104,9 +166,17 @@ export default function TasksPage() {
               ))}
             </Select>
             <Input className="sm:col-span-2" label="Title" value={form.title} onChange={set('title')} placeholder="Build the login screen" />
-            <Textarea className="sm:col-span-2" label="Description" value={form.description} onChange={set('description')} rows={3} />
+            <Textarea
+              className="sm:col-span-2"
+              label="Detailed description"
+              value={form.description}
+              onChange={set('description')}
+              rows={3}
+              placeholder="What the task is, expectations, and how it will be graded…"
+            />
             <Input label="Deadline" type="date" value={form.deadline} onChange={set('deadline')} />
-            <div className="flex items-end">
+            <Input label="Graded out of" type="number" min="1" value={form.maxScore} onChange={set('maxScore')} />
+            <div className="flex items-end sm:col-span-2">
               <Button type="submit" loading={creating}>
                 Assign task
               </Button>
@@ -129,7 +199,9 @@ export default function TasksPage() {
                 <div>
                   <h3 className="font-semibold text-slate-800">{task.title}</h3>
                   {task.description && (
-                    <p className="mt-0.5 text-sm text-slate-500">{task.description}</p>
+                    <p className="mt-0.5 whitespace-pre-line text-sm text-slate-500">
+                      {task.description}
+                    </p>
                   )}
                   {!isStudent && task.studentId?.userId && (
                     <p className="mt-0.5 text-xs text-slate-400">
@@ -139,28 +211,43 @@ export default function TasksPage() {
                 </div>
                 <Badge tone={TONE[task.status]}>{label(task.status)}</Badge>
               </div>
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                <span className="text-xs text-slate-400">
-                  {task.deadline ? `Due ${new Date(task.deadline).toLocaleDateString()}` : 'No deadline'}
-                </span>
-                {isStudent && task.status !== 'completed' && (
-                  <div className="flex gap-2">
-                    {task.status === 'assigned' && (
-                      <Button size="sm" loading={busyId === task._id} onClick={() => progress(task._id, 'in_progress')}>
-                        Start task
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      loading={busyId === task._id}
-                      onClick={() => progress(task._id, 'completed')}
-                    >
-                      Mark complete
-                    </Button>
-                  </div>
-                )}
+
+              <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400">
+                <span>{task.deadline ? `Due ${new Date(task.deadline).toLocaleDateString()}` : 'No deadline'}</span>
+                <span>Graded out of {task.maxScore ?? 100}</span>
               </div>
+
+              {/* Graded result — visible to everyone once graded */}
+              {task.gradedAt && (
+                <div className="mt-3 rounded-xl bg-brand-50 px-3.5 py-2.5 text-sm">
+                  <span className="font-semibold text-brand-800">
+                    Score: {task.score}/{task.maxScore ?? 100}
+                  </span>
+                  {task.feedback && <p className="mt-1 text-brand-800/80">{task.feedback}</p>}
+                </div>
+              )}
+
+              {/* Student progress actions */}
+              {isStudent && task.status !== 'completed' && (
+                <div className="mt-3 flex gap-2">
+                  {task.status === 'assigned' && (
+                    <Button size="sm" loading={busyId === task._id} onClick={() => progress(task._id, 'in_progress')}>
+                      Start task
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    loading={busyId === task._id}
+                    onClick={() => progress(task._id, 'completed')}
+                  >
+                    Mark complete
+                  </Button>
+                </div>
+              )}
+
+              {/* Supervisor grading */}
+              {!isStudent && <GradeForm task={task} onGrade={grade} />}
             </Card>
           ))}
         </div>

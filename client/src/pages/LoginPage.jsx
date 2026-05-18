@@ -51,13 +51,13 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="mt-5 space-y-4">
             <Input
-              label="Email"
-              type="email"
+              label="Email or username"
+              type="text"
               required
               icon={Mail}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              placeholder="you@example.com or username"
             />
             <div>
               <Input

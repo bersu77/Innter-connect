@@ -20,8 +20,18 @@ const userSchema = new mongoose.Schema(
       minlength: [8, 'Password must be at least 8 characters'],
       select: false,
     },
+    // Optional username — supervisors log in with this; can also be set by any user.
+    username: {
+      type: String,
+      unique: true,
+      sparse: true,
+      lowercase: true,
+      trim: true,
+    },
     firstName: { type: String, required: [true, 'First name is required'], trim: true },
     lastName: { type: String, required: [true, 'Last name is required'], trim: true },
+    // Company-side users (managers, supervisors) belong to a company.
+    companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company' },
     userType: {
       type: String,
       enum: ['student', 'university', 'company', 'admin'],
