@@ -12,3 +12,4 @@ export { default as Notification } from './Notification.js';
 export { default as Task } from './Task.js';
 export { default as Assessment } from './Assessment.js';
 export { default as Report } from './Report.js';
+export { default as Invitation } from './Invitation.js';
