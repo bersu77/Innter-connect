@@ -636,6 +636,24 @@ async function phase12() {
   check('non-admin is blocked from audit logs', blocked.status === 403);
 }
 
+// ── Phase 13 — NFR hardening ──
+async function phase13() {
+  lines.push('');
+  lines.push('Phase 13 — NFR hardening');
+
+  const notFound = await api('/api/this-route-does-not-exist');
+  check(
+    'unknown API routes return a JSON 404',
+    notFound.status === 404 && notFound.json?.success === false,
+  );
+
+  const health = await fetch(`${BASE}/api/health`);
+  check('security headers are set (helmet)', !!health.headers.get('x-content-type-options'));
+
+  const badId = await api('/api/internships/not-a-valid-id', { token: ctx.studentToken });
+  check('invalid identifiers produce a clean 400', badId.status === 400);
+}
+
 const phases = [
   phase1,
   phase2,
@@ -649,6 +667,7 @@ const phases = [
   phase10,
   phase11,
   phase12,
+  phase13,
 ];
 
 async function main() {
