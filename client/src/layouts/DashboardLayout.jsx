@@ -12,6 +12,7 @@ import {
   Briefcase,
   Mail,
   Handshake,
+  ClipboardList,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -21,11 +22,13 @@ const NAV_BY_ROLE = {
   student: [
     dashboard,
     { to: '/dashboard/internships', label: 'Internships', icon: Briefcase },
+    { to: '/dashboard/applications', label: 'My Applications', icon: ClipboardList },
     { to: '/dashboard/profile', label: 'My Profile', icon: User },
   ],
   company: [
     dashboard,
     { to: '/dashboard/internships', label: 'My Internships', icon: Briefcase },
+    { to: '/dashboard/applications', label: 'Applications', icon: ClipboardList },
     { to: '/dashboard/invitations', label: 'Invitations', icon: Mail },
     { to: '/dashboard/profile', label: 'Company Profile', icon: Building2 },
   ],

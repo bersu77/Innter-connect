@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, Calendar, Briefcase, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { internshipApi } from '../../api/internships';
-import { Badge, Button, Card, Spinner } from '../../components/ui';
+import { applicationApi } from '../../api/applications';
+import { Badge, Button, Card, Spinner, Textarea } from '../../components/ui';
 
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString() : '—');
 
@@ -16,6 +17,12 @@ export default function InternshipDetailPage() {
   const [internship, setInternship] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Apply (student)
+  const [coverLetter, setCoverLetter] = useState('');
+  const [applying, setApplying] = useState(false);
+  const [applyMessage, setApplyMessage] = useState(null);
+  const [applied, setApplied] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -30,6 +37,20 @@ export default function InternshipDetailPage() {
     })();
   }, [id]);
 
+  async function handleApply() {
+    setApplying(true);
+    setApplyMessage(null);
+    try {
+      await applicationApi.apply(id, coverLetter);
+      setApplied(true);
+      setApplyMessage({ type: 'success', text: 'Application submitted successfully.' });
+    } catch (err) {
+      setApplyMessage({ type: 'error', text: err.response?.data?.message || 'Could not apply.' });
+    } finally {
+      setApplying(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex justify-center py-20">
@@ -43,6 +64,7 @@ export default function InternshipDetailPage() {
 
   const req = internship.requirements || {};
   const pos = internship.position || {};
+  const canApply = role === 'student' && internship.status === 'active';
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -111,17 +133,49 @@ export default function InternshipDetailPage() {
           </p>
         )}
 
-        <div className="mt-6 flex gap-3">
-          {role === 'company' && (
+        {role === 'company' && (
+          <div className="mt-6">
             <Button
               variant="secondary"
               onClick={() => navigate(`/dashboard/post-internship/${internship._id}`)}
             >
               Edit posting
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </Card>
+
+      {canApply && (
+        <Card className="p-6">
+          <h2 className="text-base font-semibold">Apply for this internship</h2>
+          {applyMessage && (
+            <div
+              className={`mt-3 rounded-xl px-3.5 py-2.5 text-sm ${
+                applyMessage.type === 'success'
+                  ? 'bg-brand-50 text-brand-800'
+                  : 'bg-red-50 text-red-700'
+              }`}
+            >
+              {applyMessage.text}
+            </div>
+          )}
+          {!applied && (
+            <>
+              <Textarea
+                className="mt-3"
+                label="Cover letter"
+                rows={5}
+                value={coverLetter}
+                onChange={(e) => setCoverLetter(e.target.value)}
+                placeholder="Tell the company why you are a great fit…"
+              />
+              <Button className="mt-3" loading={applying} onClick={handleApply}>
+                Submit application
+              </Button>
+            </>
+          )}
+        </Card>
+      )}
     </div>
   );
 }
