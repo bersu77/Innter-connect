@@ -430,7 +430,10 @@ async function phase7() {
   const supers = await api('/api/companies/supervisors', { token: ctx.companyToken });
   check('supervisors are listable', supers.status === 200 && Array.isArray(supers.json?.supervisors));
 
-  const supervisor = supers.json?.supervisors?.[0];
+  // Pick the Zemen supervisor specifically so Phase 8 (logs in as Daniel) can manage it.
+  const supervisor =
+    supers.json?.supervisors?.find((s) => s.email === 'daniel@zemen-tech.et') ||
+    supers.json?.supervisors?.[0];
   const assign = supervisor
     ? await api(`/api/placements/${ctx.placementId}/supervisor`, {
         method: 'PATCH',
