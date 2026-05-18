@@ -579,6 +579,42 @@ async function phase10() {
   check('unread count is zero after mark-all-read', after.status === 200 && after.json.unread === 0);
 }
 
+// ── Phase 11 — reporting & analytics ──
+async function phase11() {
+  lines.push('');
+  lines.push('Phase 11 — reporting & analytics');
+
+  const uniReport = await api('/api/reports', { method: 'POST', token: ctx.universityToken });
+  check(
+    'university can generate a report',
+    uniReport.status === 201 && !!uniReport.json?.report?.payload?.summary,
+  );
+  ctx.reportId = uniReport.json?.report?._id;
+
+  const companyReport = await api('/api/reports', { method: 'POST', token: ctx.companyToken });
+  check('company can generate a report', companyReport.status === 201);
+
+  const adminReport = await api('/api/reports', { method: 'POST', token: ctx.adminToken });
+  check('admin can generate a report', adminReport.status === 201);
+
+  const blocked = await api('/api/reports', { method: 'POST', token: ctx.studentToken });
+  check('student cannot generate reports (RBAC)', blocked.status === 403);
+
+  const list = await api('/api/reports', { token: ctx.universityToken });
+  check('reports are listed', list.status === 200 && list.json.reports.length > 0);
+
+  const detail = await api(`/api/reports/${ctx.reportId}`, { token: ctx.universityToken });
+  check('report detail includes payload', detail.status === 200 && !!detail.json?.report?.payload);
+
+  const exp = await fetch(`${BASE}/api/reports/${ctx.reportId}/export`, {
+    headers: { Authorization: `Bearer ${ctx.universityToken}` },
+  });
+  check(
+    'report exports as CSV',
+    exp.status === 200 && (exp.headers.get('content-type') || '').includes('csv'),
+  );
+}
+
 const phases = [
   phase1,
   phase2,
@@ -590,6 +626,7 @@ const phases = [
   phase8,
   phase9,
   phase10,
+  phase11,
 ];
 
 async function main() {

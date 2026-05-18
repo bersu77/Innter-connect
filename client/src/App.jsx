@@ -22,6 +22,7 @@ import ApplicationsPage from './pages/dashboard/ApplicationsPage'
 import PlacementsPage from './pages/dashboard/PlacementsPage'
 import TasksPage from './pages/dashboard/TasksPage'
 import AssessmentsPage from './pages/dashboard/AssessmentsPage'
+import ReportsPage from './pages/dashboard/ReportsPage'
 
 function App() {
   return (
@@ -66,7 +67,8 @@ function App() {
             <Route path="/dashboard/placements" element={<PlacementsPage />} />
             <Route path="/dashboard/tasks" element={<TasksPage />} />
             <Route path="/dashboard/assessments" element={<AssessmentsPage />} />
-            {/* Feature routes (reports, audit, …) are added by later phases. */}
+            <Route path="/dashboard/reports" element={<ReportsPage />} />
+            {/* Feature routes (audit, …) are added by later phases. */}
           </Route>
         </Routes>
       </AuthProvider>
