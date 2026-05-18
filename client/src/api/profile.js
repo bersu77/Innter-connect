@@ -20,4 +20,9 @@ export const universityApi = {
   getProfile: () => client.get('/universities/me').then((r) => r.data),
   updateProfile: (data) => client.put('/universities/me', data).then((r) => r.data),
   list: () => client.get('/universities').then((r) => r.data),
+  listStudents: () => client.get('/universities/students').then((r) => r.data),
+  verifyStudent: (studentId, decision, remarks) =>
+    client
+      .patch(`/universities/students/${studentId}/verify`, { decision, remarks })
+      .then((r) => r.data),
 };

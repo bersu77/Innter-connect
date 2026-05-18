@@ -8,6 +8,8 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import studentRoutes from './routes/studentRoutes.js';
 import companyRoutes from './routes/companyRoutes.js';
 import universityRoutes from './routes/universityRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
+import verificationRoutes from './routes/verificationRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 
 const app = express();
@@ -35,6 +37,8 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/companies', companyRoutes);
 app.use('/api/universities', universityRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/verifications', verificationRoutes);
 
 // Error handler (must be last)
 app.use(errorHandler);
