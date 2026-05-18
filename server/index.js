@@ -16,6 +16,7 @@ import applicationRoutes from './routes/applicationRoutes.js';
 import placementRoutes from './routes/placementRoutes.js';
 import taskRoutes from './routes/taskRoutes.js';
 import assessmentRoutes from './routes/assessmentRoutes.js';
+import dashboardRoutes from './routes/dashboardRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 
 const app = express();
@@ -51,6 +52,7 @@ app.use('/api/applications', applicationRoutes);
 app.use('/api/placements', placementRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/assessments', assessmentRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Error handler (must be last)
 app.use(errorHandler);

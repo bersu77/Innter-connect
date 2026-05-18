@@ -1,75 +1,102 @@
-// DashboardHome — role-aware landing page inside the dashboard shell.
-// Phase 0 ships placeholders; later phases (3, 10) replace each role's view
-// with live data. The role switch here is the seam those phases plug into.
+// DashboardHome — role-aware landing page with live summary stats (UC019).
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Card } from '../../components/ui';
+import { dashboardApi } from '../../api/dashboard';
+import { Card, Spinner } from '../../components/ui';
 
-const roleConfig = {
+const STAT_LABELS = {
   student: {
-    title: 'Student',
-    stats: [
-      { label: 'Active internships', value: '0' },
-      { label: 'Pending applications', value: '0' },
-      { label: 'Notifications', value: '0' },
-    ],
+    applications: 'Applications',
+    pending: 'In progress',
+    offers: 'Offers received',
+    placements: 'Placements',
   },
   company: {
-    title: 'Company',
-    stats: [
-      { label: 'Open postings', value: '0' },
-      { label: 'Applications to review', value: '0' },
-      { label: 'Interns hired', value: '0' },
-    ],
+    internships: 'Internships',
+    activeInternships: 'Active postings',
+    applications: 'Applications',
+    toReview: 'Awaiting review',
+    placements: 'Placements',
   },
   university: {
-    title: 'University',
-    stats: [
-      { label: 'Registered students', value: '0' },
-      { label: 'Active placements', value: '0' },
-      { label: 'Pending verifications', value: '0' },
-    ],
+    students: 'Registered students',
+    verifiedStudents: 'Verified students',
+    pendingStudents: 'Pending verification',
+    placements: 'Placements',
   },
   admin: {
-    title: 'Administrator',
-    stats: [
-      { label: 'Total users', value: '0' },
-      { label: 'Pending approvals', value: '0' },
-      { label: 'System alerts', value: '0' },
-    ],
+    users: 'Total users',
+    companies: 'Companies',
+    universities: 'Universities',
+    internships: 'Internships',
+    applications: 'Applications',
+    pendingOrganizations: 'Pending verifications',
   },
 };
 
 export default function DashboardHome() {
   const { user } = useAuth();
-  const role = user?.userType ?? user?.role ?? 'student';
-  const config = roleConfig[role] ?? roleConfig.student;
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    dashboardApi
+      .get()
+      .then(setData)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  const role = data?.role || user?.userType || user?.role || 'student';
+  const labels = STAT_LABELS[role] || {};
+  const stats = data?.stats || {};
   const firstName = user?.firstName || 'there';
+  const entries = Object.entries(stats).filter(([key]) => labels[key]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Welcome back, {firstName}</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Your {config.title.toLowerCase()} workspace — live data arrives as each module ships.
+          Your {role} workspace at a glance.
+          {data?.unread > 0
+            ? ` You have ${data.unread} unread notification${data.unread > 1 ? 's' : ''}.`
+            : ''}
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {config.stats.map((stat) => (
-          <Card key={stat.label} className="p-5">
-            <p className="text-sm text-slate-500">{stat.label}</p>
-            <p className="mt-2 text-3xl font-semibold tracking-tight">{stat.value}</p>
+      {loading ? (
+        <div className="flex justify-center py-16">
+          <Spinner size="lg" className="text-brand-600" />
+        </div>
+      ) : (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {entries.map(([key, value]) => (
+              <Card key={key} className="p-5">
+                <p className="text-sm text-slate-500">{labels[key]}</p>
+                <p className="mt-2 text-3xl font-semibold tracking-tight">{value}</p>
+              </Card>
+            ))}
+            {entries.length === 0 && (
+              <Card glass className="p-6 sm:col-span-2 lg:col-span-3">
+                <h2 className="text-base font-semibold">Complete your profile</h2>
+                <p className="mt-1.5 text-sm text-slate-500">
+                  Set up your profile to start using InternConnect.
+                </p>
+              </Card>
+            )}
+          </div>
+
+          <Card glass className="p-6">
+            <h2 className="text-base font-semibold">Getting around</h2>
+            <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
+              Use the sidebar to manage internships, applications, placements, and more. The bell
+              in the top bar shows your latest notifications.
+            </p>
           </Card>
-        ))}
-      </div>
-
-      <Card glass className="p-6">
-        <h2 className="text-base font-semibold">Getting started</h2>
-        <p className="mt-1.5 text-sm leading-relaxed text-slate-500">
-          The app shell, design system, and routing are in place. Profiles, internships,
-          applications, and the rest of the workspace are delivered module by module.
-        </p>
-      </Card>
+        </>
+      )}
     </div>
   );
 }
