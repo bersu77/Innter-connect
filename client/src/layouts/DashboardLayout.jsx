@@ -14,11 +14,15 @@ import {
   Handshake,
   ClipboardList,
   Award,
+  ListChecks,
+  Star,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const dashboard = { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true };
 const placements = { to: '/dashboard/placements', label: 'Placements', icon: Award };
+const tasks = { to: '/dashboard/tasks', label: 'Tasks', icon: ListChecks };
+const assessments = { to: '/dashboard/assessments', label: 'Assessments', icon: Star };
 
 const NAV_BY_ROLE = {
   student: [
@@ -26,6 +30,8 @@ const NAV_BY_ROLE = {
     { to: '/dashboard/internships', label: 'Internships', icon: Briefcase },
     { to: '/dashboard/applications', label: 'My Applications', icon: ClipboardList },
     placements,
+    tasks,
+    assessments,
     { to: '/dashboard/profile', label: 'My Profile', icon: User },
   ],
   company: [
@@ -33,6 +39,8 @@ const NAV_BY_ROLE = {
     { to: '/dashboard/internships', label: 'My Internships', icon: Briefcase },
     { to: '/dashboard/applications', label: 'Applications', icon: ClipboardList },
     placements,
+    tasks,
+    assessments,
     { to: '/dashboard/invitations', label: 'Invitations', icon: Mail },
     { to: '/dashboard/profile', label: 'Company Profile', icon: Building2 },
   ],
@@ -73,7 +81,7 @@ export default function DashboardLayout() {
             <span className="text-brand-600">Intern</span>Connect
           </span>
         </div>
-        <nav className="flex-1 space-y-1 px-3 py-4">
+        <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {navItems.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}

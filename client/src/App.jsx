@@ -20,6 +20,8 @@ import PartnersPage from './pages/dashboard/PartnersPage'
 import InvitationsPage from './pages/dashboard/InvitationsPage'
 import ApplicationsPage from './pages/dashboard/ApplicationsPage'
 import PlacementsPage from './pages/dashboard/PlacementsPage'
+import TasksPage from './pages/dashboard/TasksPage'
+import AssessmentsPage from './pages/dashboard/AssessmentsPage'
 
 function App() {
   return (
@@ -62,7 +64,9 @@ function App() {
             <Route path="/dashboard/invitations" element={<InvitationsPage />} />
             <Route path="/dashboard/applications" element={<ApplicationsPage />} />
             <Route path="/dashboard/placements" element={<PlacementsPage />} />
-            {/* Feature routes (tasks, reports, …) are added by later phases. */}
+            <Route path="/dashboard/tasks" element={<TasksPage />} />
+            <Route path="/dashboard/assessments" element={<AssessmentsPage />} />
+            {/* Feature routes (reports, audit, …) are added by later phases. */}
           </Route>
         </Routes>
       </AuthProvider>
