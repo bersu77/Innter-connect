@@ -13,6 +13,11 @@ import ProfilePage from './pages/dashboard/ProfilePage'
 import AdminUsersPage from './pages/dashboard/AdminUsersPage'
 import AdminVerificationPage from './pages/dashboard/AdminVerificationPage'
 import StudentVerificationPage from './pages/dashboard/StudentVerificationPage'
+import InternshipsPage from './pages/dashboard/InternshipsPage'
+import InternshipDetailPage from './pages/dashboard/InternshipDetailPage'
+import PostInternshipPage from './pages/dashboard/PostInternshipPage'
+import PartnersPage from './pages/dashboard/PartnersPage'
+import InvitationsPage from './pages/dashboard/InvitationsPage'
 
 function App() {
   return (
@@ -47,7 +52,13 @@ function App() {
             <Route path="/dashboard/users" element={<AdminUsersPage />} />
             <Route path="/dashboard/verification" element={<AdminVerificationPage />} />
             <Route path="/dashboard/students" element={<StudentVerificationPage />} />
-            {/* Feature routes (internships, applications, …) are added by later phases. */}
+            <Route path="/dashboard/internships" element={<InternshipsPage />} />
+            <Route path="/dashboard/internships/:id" element={<InternshipDetailPage />} />
+            <Route path="/dashboard/post-internship" element={<PostInternshipPage />} />
+            <Route path="/dashboard/post-internship/:id" element={<PostInternshipPage />} />
+            <Route path="/dashboard/partners" element={<PartnersPage />} />
+            <Route path="/dashboard/invitations" element={<InvitationsPage />} />
+            {/* Feature routes (applications, tasks, …) are added by later phases. */}
           </Route>
         </Routes>
       </AuthProvider>

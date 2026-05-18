@@ -59,3 +59,19 @@ export const updateMyProfile = async (req, res, next) => {
     next(err);
   }
 };
+
+// @route GET /api/companies  — searchable list (universities find partners).
+export const listCompanies = async (req, res, next) => {
+  try {
+    const { search } = req.query;
+    const query = {};
+    if (search) query.name = new RegExp(search, 'i');
+    const companies = await Company.find(query)
+      .select('name industry city country verified')
+      .sort('name')
+      .limit(100);
+    res.json({ success: true, companies });
+  } catch (err) {
+    next(err);
+  }
+};

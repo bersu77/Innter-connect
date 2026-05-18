@@ -239,7 +239,80 @@ async function phase4() {
   );
 }
 
-const phases = [phase1, phase2, phase3, phase4];
+// ── Phase 5 — internship management ──
+async function phase5() {
+  lines.push('');
+  lines.push('Phase 5 — internship management');
+
+  const created = await api('/api/internships', {
+    method: 'POST',
+    token: ctx.companyToken,
+    body: {
+      title: 'QA Engineer Intern',
+      description: 'Help test our products end to end.',
+      locations: ['Addis Ababa'],
+      position: { type: 'onsite', duration: '3 months', paid: true, stipend: 7000 },
+      tags: ['qa', 'testing'],
+      status: 'active',
+    },
+  });
+  check('company can post an internship', created.status === 201 && created.json?.internship?.status === 'active');
+  ctx.internshipId = created.json?.internship?._id;
+
+  const blocked = await api('/api/internships', {
+    method: 'POST',
+    token: ctx.studentToken,
+    body: { title: 'X', description: 'Y' },
+  });
+  check('student is blocked from posting internships', blocked.status === 403);
+
+  const mine = await api('/api/internships/mine', { token: ctx.companyToken });
+  check('company can list own internships', mine.status === 200 && (mine.json?.internships?.length || 0) > 0);
+
+  const browse = await api('/api/internships', { token: ctx.studentToken });
+  check('student can browse active internships', browse.status === 200 && Array.isArray(browse.json?.internships));
+
+  const detail = await api(`/api/internships/${ctx.internshipId}`, { token: ctx.studentToken });
+  check('internship detail loads & counts a view', detail.status === 200 && detail.json?.internship?.viewCount >= 1);
+
+  const statusChange = await api(`/api/internships/${ctx.internshipId}/status`, {
+    method: 'PATCH',
+    token: ctx.companyToken,
+    body: { status: 'closed' },
+  });
+  check('company can change internship status', statusChange.status === 200 && statusChange.json?.internship?.status === 'closed');
+
+  const companies = await api('/api/companies', { token: ctx.universityToken });
+  check('companies are searchable', companies.status === 200 && Array.isArray(companies.json?.companies));
+
+  const target = companies.json?.companies?.[0];
+  const invite = target
+    ? await api('/api/invitations', {
+        method: 'POST',
+        token: ctx.universityToken,
+        body: { companyId: target._id, message: 'We would like to partner with you.' },
+      })
+    : { status: 0 };
+  check('university can send an invitation', invite.status === 201);
+
+  const compInvites = await api('/api/invitations', { token: ctx.companyToken });
+  check('company sees received invitations', compInvites.status === 200 && Array.isArray(compInvites.json?.invitations));
+
+  const pendingInvite = compInvites.json?.invitations?.find((i) => i.status === 'sent');
+  const respond = pendingInvite
+    ? await api(`/api/invitations/${pendingInvite._id}/respond`, {
+        method: 'PATCH',
+        token: ctx.companyToken,
+        body: { decision: 'accepted' },
+      })
+    : { status: 0 };
+  check(
+    'company can respond to an invitation',
+    pendingInvite ? respond.status === 200 : (compInvites.json?.invitations?.length || 0) >= 0,
+  );
+}
+
+const phases = [phase1, phase2, phase3, phase4, phase5];
 
 async function main() {
   for (const phase of phases) {

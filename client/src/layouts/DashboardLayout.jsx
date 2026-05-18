@@ -9,18 +9,31 @@ import {
   Users,
   ShieldCheck,
   UserCheck,
+  Briefcase,
+  Mail,
+  Handshake,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const dashboard = { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true };
 
 const NAV_BY_ROLE = {
-  student: [dashboard, { to: '/dashboard/profile', label: 'My Profile', icon: User }],
-  company: [dashboard, { to: '/dashboard/profile', label: 'Company Profile', icon: Building2 }],
+  student: [
+    dashboard,
+    { to: '/dashboard/internships', label: 'Internships', icon: Briefcase },
+    { to: '/dashboard/profile', label: 'My Profile', icon: User },
+  ],
+  company: [
+    dashboard,
+    { to: '/dashboard/internships', label: 'My Internships', icon: Briefcase },
+    { to: '/dashboard/invitations', label: 'Invitations', icon: Mail },
+    { to: '/dashboard/profile', label: 'Company Profile', icon: Building2 },
+  ],
   university: [
     dashboard,
-    { to: '/dashboard/profile', label: 'University Profile', icon: Building2 },
     { to: '/dashboard/students', label: 'Student Verification', icon: UserCheck },
+    { to: '/dashboard/partners', label: 'Partner Companies', icon: Handshake },
+    { to: '/dashboard/profile', label: 'University Profile', icon: Building2 },
   ],
   admin: [
     dashboard,
