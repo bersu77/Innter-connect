@@ -17,6 +17,7 @@ import {
   ListChecks,
   Star,
   BarChart3,
+  ScrollText,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from '../components/NotificationBell';
@@ -60,6 +61,7 @@ const NAV_BY_ROLE = {
     dashboard,
     { to: '/dashboard/users', label: 'Users', icon: Users },
     { to: '/dashboard/verification', label: 'Verification', icon: ShieldCheck },
+    { to: '/dashboard/audit', label: 'Audit Log', icon: ScrollText },
     reports,
   ],
 };

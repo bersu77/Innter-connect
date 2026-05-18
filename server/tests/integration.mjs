@@ -615,6 +615,27 @@ async function phase11() {
   );
 }
 
+// ── Phase 12 — audit & compliance review ──
+async function phase12() {
+  lines.push('');
+  lines.push('Phase 12 — audit & compliance review');
+
+  const logs = await api('/api/audit/logs', { token: ctx.adminToken });
+  check('admin can review audit logs', logs.status === 200 && logs.json.logs.length > 0);
+
+  const stats = await api('/api/audit/stats', { token: ctx.adminToken });
+  check('audit stats are available', stats.status === 200 && stats.json?.stats?.total > 0);
+
+  const filtered = await api('/api/audit/logs?action=LOGIN', { token: ctx.adminToken });
+  check(
+    'audit logs filter by action',
+    filtered.status === 200 && filtered.json.logs.every((l) => /LOGIN/i.test(l.action)),
+  );
+
+  const blocked = await api('/api/audit/logs', { token: ctx.studentToken });
+  check('non-admin is blocked from audit logs', blocked.status === 403);
+}
+
 const phases = [
   phase1,
   phase2,
@@ -627,6 +648,7 @@ const phases = [
   phase9,
   phase10,
   phase11,
+  phase12,
 ];
 
 async function main() {
