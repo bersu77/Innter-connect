@@ -16,6 +16,7 @@ import {
   Award,
   ListChecks,
   Star,
+  BarChart3,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from '../components/NotificationBell';
@@ -24,6 +25,7 @@ const dashboard = { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard,
 const placements = { to: '/dashboard/placements', label: 'Placements', icon: Award };
 const tasks = { to: '/dashboard/tasks', label: 'Tasks', icon: ListChecks };
 const assessments = { to: '/dashboard/assessments', label: 'Assessments', icon: Star };
+const reports = { to: '/dashboard/reports', label: 'Reports', icon: BarChart3 };
 
 const NAV_BY_ROLE = {
   student: [
@@ -42,6 +44,7 @@ const NAV_BY_ROLE = {
     placements,
     tasks,
     assessments,
+    reports,
     { to: '/dashboard/invitations', label: 'Invitations', icon: Mail },
     { to: '/dashboard/profile', label: 'Company Profile', icon: Building2 },
   ],
@@ -50,12 +53,14 @@ const NAV_BY_ROLE = {
     { to: '/dashboard/students', label: 'Student Verification', icon: UserCheck },
     placements,
     { to: '/dashboard/partners', label: 'Partner Companies', icon: Handshake },
+    reports,
     { to: '/dashboard/profile', label: 'University Profile', icon: Building2 },
   ],
   admin: [
     dashboard,
     { to: '/dashboard/users', label: 'Users', icon: Users },
     { to: '/dashboard/verification', label: 'Verification', icon: ShieldCheck },
+    reports,
   ],
 };
 
