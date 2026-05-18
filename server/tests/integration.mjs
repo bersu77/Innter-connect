@@ -65,7 +65,59 @@ async function phase1() {
   check('protected route blocks missing token', noToken.status === 401);
 }
 
-const phases = [phase1];
+// ── Phase 2 — auth, RBAC, audit, notifications ──
+async function phase2() {
+  lines.push('');
+  lines.push('Phase 2 — auth, RBAC & notifications');
+
+  const email = `new.student.${Date.now()}@test.et`;
+  const reg = await api('/api/auth/register', {
+    method: 'POST',
+    body: { firstName: 'New', lastName: 'Student', email, password: 'Password123!', userType: 'student' },
+  });
+  check('register a new student', reg.status === 201 && !!reg.json?.token);
+
+  const dup = await api('/api/auth/register', {
+    method: 'POST',
+    body: { firstName: 'Dup', lastName: 'User', email, password: 'Password123!', userType: 'student' },
+  });
+  check('duplicate email is rejected', dup.status === 400);
+
+  const adminReg = await api('/api/auth/register', {
+    method: 'POST',
+    body: { firstName: 'X', lastName: 'Y', email: `admin.${Date.now()}@test.et`, password: 'Password123!', userType: 'admin' },
+  });
+  check('admin self-registration is blocked', adminReg.status === 403);
+
+  const noAuth = await api('/api/notifications');
+  check('notifications require authentication', noAuth.status === 401);
+
+  const notifs = await api('/api/notifications', { token: ctx.studentToken });
+  check('notifications list returns for authed user', notifs.status === 200 && Array.isArray(notifs.json?.notifications));
+
+  const forgot = await api('/api/auth/forgot-password', {
+    method: 'POST',
+    body: { email: 'dawit@aau.edu.et' },
+  });
+  check('forgot-password responds generically', forgot.status === 200 && forgot.json?.success === true);
+
+  // Account lockout after 5 failed logins.
+  const lockEmail = `lock.test.${Date.now()}@test.et`;
+  await api('/api/auth/register', {
+    method: 'POST',
+    body: { firstName: 'Lock', lastName: 'Test', email: lockEmail, password: 'Password123!', userType: 'student' },
+  });
+  for (let i = 0; i < 5; i += 1) {
+    await api('/api/auth/login', { method: 'POST', body: { email: lockEmail, password: 'wrong' } });
+  }
+  const afterLock = await api('/api/auth/login', {
+    method: 'POST',
+    body: { email: lockEmail, password: 'Password123!' },
+  });
+  check('account locks after 5 failed logins', afterLock.status === 423);
+}
+
+const phases = [phase1, phase2];
 
 async function main() {
   for (const phase of phases) {
