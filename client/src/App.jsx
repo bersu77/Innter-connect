@@ -24,6 +24,7 @@ import TasksPage from './pages/dashboard/TasksPage'
 import AssessmentsPage from './pages/dashboard/AssessmentsPage'
 import ReportsPage from './pages/dashboard/ReportsPage'
 import AuditPage from './pages/dashboard/AuditPage'
+import NotFoundPage from './pages/NotFoundPage'
 
 function App() {
   return (
@@ -71,6 +72,9 @@ function App() {
             <Route path="/dashboard/reports" element={<ReportsPage />} />
             <Route path="/dashboard/audit" element={<AuditPage />} />
           </Route>
+
+          {/* ── Catch-all ── */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>
