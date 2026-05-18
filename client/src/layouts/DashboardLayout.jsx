@@ -1,18 +1,24 @@
 // DashboardLayout — shared shell for every authenticated role workspace.
-// Sidebar + topbar; feature nav links are added by later module phases.
+// Sidebar nav is role-aware; later phases append items to NAV_BY_ROLE.
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, LogOut } from 'lucide-react';
+import { LayoutDashboard, LogOut, User, Building2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-// Phase 0 ships only the Dashboard link. Phases 3+ append Internships,
-// Applications, etc. — kept as one list so additions stay low-regression.
-const navItems = [{ to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true }];
+const dashboard = { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true };
+
+const NAV_BY_ROLE = {
+  student: [dashboard, { to: '/dashboard/profile', label: 'My Profile', icon: User }],
+  company: [dashboard, { to: '/dashboard/profile', label: 'Company Profile', icon: Building2 }],
+  university: [dashboard, { to: '/dashboard/profile', label: 'University Profile', icon: Building2 }],
+  admin: [dashboard],
+};
 
 export default function DashboardLayout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
   const role = user?.userType ?? user?.role ?? 'student';
+  const navItems = NAV_BY_ROLE[role] || NAV_BY_ROLE.student;
   const name =
     [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'there';
 

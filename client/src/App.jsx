@@ -9,6 +9,7 @@ import RegisterPage from './pages/RegisterPage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import DashboardLayout from './layouts/DashboardLayout'
 import DashboardHome from './pages/dashboard/DashboardHome'
+import ProfilePage from './pages/dashboard/ProfilePage'
 
 function App() {
   return (
@@ -39,6 +40,7 @@ function App() {
             }
           >
             <Route path="/dashboard" element={<DashboardHome />} />
+            <Route path="/dashboard/profile" element={<ProfilePage />} />
             {/* Feature routes (internships, applications, …) are added by later phases. */}
           </Route>
         </Routes>

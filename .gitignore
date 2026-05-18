@@ -6,6 +6,9 @@ server/node_modules/
 dist/
 dist-ssr/
 
+# Uploaded files (local storage; AWS S3 in Phase 14)
+uploads/
+
 # Vite cache
 .vite/
 
