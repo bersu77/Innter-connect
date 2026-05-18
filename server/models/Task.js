@@ -16,6 +16,12 @@ const taskSchema = new mongoose.Schema(
     },
     progressNote: String,
     completedAt: Date,
+    // Grading — set by the supervisor after the task is done.
+    maxScore: { type: Number, default: 100 },
+    score: { type: Number },
+    feedback: { type: String },
+    gradedAt: Date,
+    gradedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true },
 );

@@ -24,6 +24,10 @@ import TasksPage from './pages/dashboard/TasksPage'
 import AssessmentsPage from './pages/dashboard/AssessmentsPage'
 import ReportsPage from './pages/dashboard/ReportsPage'
 import AuditPage from './pages/dashboard/AuditPage'
+import AccountPage from './pages/dashboard/AccountPage'
+import SupervisorsPage from './pages/dashboard/SupervisorsPage'
+import MessagesPage from './pages/dashboard/MessagesPage'
+import AppealsPage from './pages/dashboard/AppealsPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 function App() {
@@ -71,6 +75,10 @@ function App() {
             <Route path="/dashboard/assessments" element={<AssessmentsPage />} />
             <Route path="/dashboard/reports" element={<ReportsPage />} />
             <Route path="/dashboard/audit" element={<AuditPage />} />
+            <Route path="/dashboard/account" element={<AccountPage />} />
+            <Route path="/dashboard/supervisors" element={<SupervisorsPage />} />
+            <Route path="/dashboard/messages" element={<MessagesPage />} />
+            <Route path="/dashboard/appeals" element={<AppealsPage />} />
           </Route>
 
           {/* ── Catch-all ── */}

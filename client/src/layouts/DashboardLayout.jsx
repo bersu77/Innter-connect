@@ -1,5 +1,6 @@
 // DashboardLayout — shared shell for every authenticated role workspace.
-// Role-aware nav; responsive — a slide-in drawer replaces the sidebar on mobile.
+// Nav is keyed by an effective role: a company user with the 'supervisor'
+// sub-role gets the supervisor workspace, not the manager one.
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
@@ -19,16 +20,19 @@ import {
   Star,
   BarChart3,
   ScrollText,
+  Settings,
+  Gavel,
+  MessageSquare,
+  UserPlus,
   Menu,
-  X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from '../components/NotificationBell';
 
 const dashboard = { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true };
-const placements = { to: '/dashboard/placements', label: 'Placements', icon: Award };
-const tasks = { to: '/dashboard/tasks', label: 'Tasks', icon: ListChecks };
-const assessments = { to: '/dashboard/assessments', label: 'Assessments', icon: Star };
+const account = { to: '/dashboard/account', label: 'Account', icon: Settings };
+const appeals = { to: '/dashboard/appeals', label: 'Appeals', icon: Gavel };
+const messages = { to: '/dashboard/messages', label: 'Messages', icon: MessageSquare };
 const reports = { to: '/dashboard/reports', label: 'Reports', icon: BarChart3 };
 
 const NAV_BY_ROLE = {
@@ -36,38 +40,61 @@ const NAV_BY_ROLE = {
     dashboard,
     { to: '/dashboard/internships', label: 'Internships', icon: Briefcase },
     { to: '/dashboard/applications', label: 'My Applications', icon: ClipboardList },
-    placements,
-    tasks,
-    assessments,
+    { to: '/dashboard/placements', label: 'Placements', icon: Award },
+    { to: '/dashboard/tasks', label: 'Tasks', icon: ListChecks },
+    { to: '/dashboard/assessments', label: 'Assessments', icon: Star },
+    messages,
+    appeals,
     { to: '/dashboard/profile', label: 'My Profile', icon: User },
+    account,
   ],
   company: [
     dashboard,
     { to: '/dashboard/internships', label: 'My Internships', icon: Briefcase },
     { to: '/dashboard/applications', label: 'Applications', icon: ClipboardList },
-    placements,
-    tasks,
-    assessments,
-    reports,
+    { to: '/dashboard/placements', label: 'Placements', icon: Award },
+    { to: '/dashboard/supervisors', label: 'Supervisors', icon: UserPlus },
     { to: '/dashboard/invitations', label: 'Invitations', icon: Mail },
+    reports,
+    appeals,
     { to: '/dashboard/profile', label: 'Company Profile', icon: Building2 },
+    account,
+  ],
+  supervisor: [
+    dashboard,
+    { to: '/dashboard/placements', label: 'My Interns', icon: Award },
+    { to: '/dashboard/tasks', label: 'Tasks', icon: ListChecks },
+    { to: '/dashboard/assessments', label: 'Assessments', icon: Star },
+    messages,
+    account,
   ],
   university: [
     dashboard,
     { to: '/dashboard/students', label: 'Student Verification', icon: UserCheck },
-    placements,
+    { to: '/dashboard/placements', label: 'Placements', icon: Award },
     { to: '/dashboard/partners', label: 'Partner Companies', icon: Handshake },
     reports,
+    appeals,
     { to: '/dashboard/profile', label: 'University Profile', icon: Building2 },
+    account,
   ],
   admin: [
     dashboard,
     { to: '/dashboard/users', label: 'Users', icon: Users },
     { to: '/dashboard/verification', label: 'Verification', icon: ShieldCheck },
+    appeals,
     { to: '/dashboard/audit', label: 'Audit Log', icon: ScrollText },
     reports,
+    account,
   ],
 };
+
+// A company user with the 'supervisor' sub-role uses the supervisor workspace.
+export function effectiveRole(user) {
+  const type = user?.userType ?? user?.role ?? 'student';
+  if (type === 'company' && (user?.roles || []).includes('supervisor')) return 'supervisor';
+  return type;
+}
 
 function SidebarBody({ navItems, onNavigate, onLogout }) {
   return (
@@ -114,7 +141,7 @@ export default function DashboardLayout() {
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const role = user?.userType ?? user?.role ?? 'student';
+  const role = effectiveRole(user);
   const navItems = NAV_BY_ROLE[role] || NAV_BY_ROLE.student;
   const name =
     [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'there';
@@ -126,18 +153,13 @@ export default function DashboardLayout() {
 
   return (
     <div className="flex min-h-screen bg-slate-50 text-slate-900">
-      {/* ── Desktop sidebar ── */}
       <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-200/70 bg-white/80 backdrop-blur-glass md:flex">
         <SidebarBody navItems={navItems} onLogout={handleLogout} />
       </aside>
 
-      {/* ── Mobile drawer ── */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
-          <div
-            className="absolute inset-0 bg-slate-900/40"
-            onClick={() => setMobileOpen(false)}
-          />
+          <div className="absolute inset-0 bg-slate-900/40" onClick={() => setMobileOpen(false)} />
           <aside className="absolute left-0 top-0 flex h-full w-64 flex-col bg-white shadow-soft-lg">
             <SidebarBody
               navItems={navItems}
@@ -148,7 +170,6 @@ export default function DashboardLayout() {
         </div>
       )}
 
-      {/* ── Main column ── */}
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-16 items-center justify-between border-b border-slate-200/70 bg-white/80 px-4 backdrop-blur-glass sm:px-6">
           <div className="flex items-center gap-2">

@@ -5,6 +5,7 @@ import {
   updateMyProfile,
   listCompanies,
   listSupervisors,
+  createSupervisor,
 } from '../controllers/companyController.js';
 
 const router = Router();
@@ -12,6 +13,7 @@ const router = Router();
 // Any authenticated user may search companies (universities find partners).
 router.get('/', protect, listCompanies);
 router.get('/supervisors', protect, authorize('company'), listSupervisors);
+router.post('/supervisors', protect, authorize('company'), createSupervisor);
 router.get('/me', protect, authorize('company'), getMyProfile);
 router.put('/me', protect, authorize('company'), updateMyProfile);
 

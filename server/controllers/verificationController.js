@@ -32,6 +32,19 @@ export const submitAppeal = async (req, res, next) => {
   }
 };
 
+// @route GET /api/verifications/mine  — the caller's own verification records + appeals.
+export const myVerifications = async (req, res, next) => {
+  try {
+    const verifications = await Verification.find({ requestedBy: req.user._id }).sort('-createdAt');
+    const appeals = await VerificationAppeal.find({
+      verificationId: { $in: verifications.map((v) => v._id) },
+    }).sort('-createdAt');
+    res.json({ success: true, verifications, appeals });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // @route GET /api/verifications/appeals  (admin)
 export const listAppeals = async (_req, res, next) => {
   try {

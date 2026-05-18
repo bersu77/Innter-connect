@@ -6,6 +6,8 @@ export const taskApi = {
   create: (data) => client.post('/tasks', data).then((r) => r.data),
   updateProgress: (id, status, progressNote) =>
     client.patch(`/tasks/${id}/progress`, { status, progressNote }).then((r) => r.data),
+  grade: (id, score, feedback) =>
+    client.patch(`/tasks/${id}/grade`, { score, feedback }).then((r) => r.data),
 };
 
 export const assessmentApi = {

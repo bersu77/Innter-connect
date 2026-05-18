@@ -14,6 +14,8 @@ export const studentApi = {
 export const companyApi = {
   getProfile: () => client.get('/companies/me').then((r) => r.data),
   updateProfile: (data) => client.put('/companies/me', data).then((r) => r.data),
+  listSupervisors: () => client.get('/companies/supervisors').then((r) => r.data),
+  createSupervisor: (data) => client.post('/companies/supervisors', data).then((r) => r.data),
 };
 
 export const universityApi = {

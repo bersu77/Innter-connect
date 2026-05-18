@@ -76,15 +76,78 @@ export const listCompanies = async (req, res, next) => {
   }
 };
 
-// @route GET /api/companies/supervisors  — supervisor-role users (for assignment, UC009).
-export const listSupervisors = async (_req, res, next) => {
+// @route GET /api/companies/supervisors  — this company's own supervisors (UC009).
+export const listSupervisors = async (req, res, next) => {
   try {
-    const supervisors = await User.find({
-      userType: 'company',
-      roles: 'supervisor',
-      status: 'active',
-    }).select('firstName lastName email');
+    const company = await Company.findOne({ userId: req.user._id });
+    const query = { userType: 'company', roles: 'supervisor', status: 'active' };
+    if (company) query.companyId = company._id;
+    const supervisors = await User.find(query)
+      .select('firstName lastName email username')
+      .sort('firstName');
     res.json({ success: true, supervisors });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @route POST /api/companies/supervisors  — the manager creates a supervisor account.
+export const createSupervisor = async (req, res, next) => {
+  try {
+    const company = await Company.findOne({ userId: req.user._id });
+    if (!company) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Create your company profile before adding supervisors' });
+    }
+    const { firstName, lastName, username, password } = req.body;
+    if (!firstName || !lastName || !username || !password) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'First name, last name, username and password are required' });
+    }
+    if (String(password).length < 8) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Password must be at least 8 characters' });
+    }
+    const uname = String(username).toLowerCase().trim();
+    if (await User.findOne({ username: uname })) {
+      return res.status(400).json({ success: false, message: 'That username is already taken' });
+    }
+    // Synthetic email satisfies the required+unique email constraint; login is by username.
+    const email = `${uname}@supervisor.internconnect.local`;
+    if (await User.findOne({ email })) {
+      return res.status(400).json({ success: false, message: 'A supervisor with that username exists' });
+    }
+
+    const supervisor = await User.create({
+      firstName,
+      lastName,
+      email,
+      username: uname,
+      password,
+      userType: 'company',
+      roles: ['supervisor'],
+      companyId: company._id,
+      verificationStatus: 'verified',
+      profileComplete: true,
+    });
+    await logAudit({
+      req,
+      action: 'SUPERVISOR_CREATE',
+      entityType: 'User',
+      entityId: supervisor._id,
+    });
+    res.status(201).json({
+      success: true,
+      supervisor: {
+        id: supervisor._id,
+        firstName: supervisor.firstName,
+        lastName: supervisor.lastName,
+        username: supervisor.username,
+      },
+    });
   } catch (err) {
     next(err);
   }

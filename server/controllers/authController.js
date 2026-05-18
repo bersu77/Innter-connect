@@ -24,6 +24,7 @@ const publicUser = (user) => ({
   firstName: user.firstName,
   lastName: user.lastName,
   email: user.email,
+  username: user.username,
   userType: user.userType,
   roles: user.roles,
   permissions: user.permissions,
@@ -71,14 +72,18 @@ export const register = async (req, res, next) => {
 // @route POST /api/auth/login
 export const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
+    const { password } = req.body;
+    // The identifier may be an email or a username (supervisors use a username).
+    const identifier = (req.body.email || req.body.username || '').toLowerCase().trim();
+    if (!identifier || !password) {
       return res
         .status(400)
-        .json({ success: false, message: 'Email and password are required' });
+        .json({ success: false, message: 'Email/username and password are required' });
     }
 
-    const user = await User.findOne({ email }).select('+password');
+    const user = await User.findOne({
+      $or: [{ email: identifier }, { username: identifier }],
+    }).select('+password');
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
@@ -213,6 +218,46 @@ export const forgotPassword = async (req, res, next) => {
       success: true,
       message: 'If an account exists for that email, password reset instructions will be sent.',
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @route PATCH /api/auth/credentials — change own username and/or password.
+export const updateCredentials = async (req, res, next) => {
+  try {
+    const { username, currentPassword, newPassword } = req.body;
+    const user = await User.findById(req.user._id).select('+password');
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    if (newPassword) {
+      if (!currentPassword || !(await user.comparePassword(currentPassword))) {
+        return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+      }
+      if (newPassword.length < 8) {
+        return res
+          .status(400)
+          .json({ success: false, message: 'New password must be at least 8 characters' });
+      }
+      user.password = newPassword;
+    }
+    if (username !== undefined && username !== '') {
+      const uname = String(username).toLowerCase().trim();
+      const taken = await User.findOne({ username: uname, _id: { $ne: user._id } });
+      if (taken) {
+        return res.status(400).json({ success: false, message: 'That username is already taken' });
+      }
+      user.username = uname;
+    }
+    await user.save();
+    await logAudit({
+      req,
+      user,
+      action: 'CREDENTIALS_UPDATE',
+      entityType: 'User',
+      entityId: user._id,
+    });
+    res.json({ success: true, user: publicUser(user) });
   } catch (err) {
     next(err);
   }

@@ -12,7 +12,13 @@ import { notify } from '../services/notification.js';
 export const listPlacements = async (req, res, next) => {
   try {
     const query = {};
-    if (req.user.userType === 'student') {
+    const isSupervisor =
+      req.user.userType === 'company' && (req.user.roles || []).includes('supervisor');
+
+    if (isSupervisor) {
+      // Supervisors see the placements they supervise.
+      query.supervisorId = req.user._id;
+    } else if (req.user.userType === 'student') {
       const student = await Student.findOne({ userId: req.user._id });
       if (!student) return res.json({ success: true, placements: [] });
       query.studentId = student._id;
@@ -25,17 +31,12 @@ export const listPlacements = async (req, res, next) => {
       if (!university) return res.json({ success: true, placements: [] });
       query.universityId = university._id;
     }
-    // Supervisors see placements they supervise.
-    if ((req.user.roles || []).includes('supervisor')) {
-      delete query.companyId;
-      query.supervisorId = req.user._id;
-    }
 
     const placements = await Placement.find(query)
       .populate('internshipId', 'title')
       .populate('companyId', 'name')
-      .populate('supervisorId', 'firstName lastName')
-      .populate({ path: 'studentId', select: 'major userId', populate: { path: 'userId', select: 'firstName lastName email' } })
+      .populate('supervisorId', 'firstName lastName username')
+      .populate({ path: 'studentId', select: 'major userId', populate: { path: 'userId', select: 'firstName lastName email username' } })
       .sort('-createdAt');
     res.json({ success: true, placements });
   } catch (err) {
