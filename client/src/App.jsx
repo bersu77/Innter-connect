@@ -10,6 +10,9 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import DashboardLayout from './layouts/DashboardLayout'
 import DashboardHome from './pages/dashboard/DashboardHome'
 import ProfilePage from './pages/dashboard/ProfilePage'
+import AdminUsersPage from './pages/dashboard/AdminUsersPage'
+import AdminVerificationPage from './pages/dashboard/AdminVerificationPage'
+import StudentVerificationPage from './pages/dashboard/StudentVerificationPage'
 
 function App() {
   return (
@@ -41,6 +44,9 @@ function App() {
           >
             <Route path="/dashboard" element={<DashboardHome />} />
             <Route path="/dashboard/profile" element={<ProfilePage />} />
+            <Route path="/dashboard/users" element={<AdminUsersPage />} />
+            <Route path="/dashboard/verification" element={<AdminVerificationPage />} />
+            <Route path="/dashboard/students" element={<StudentVerificationPage />} />
             {/* Feature routes (internships, applications, …) are added by later phases. */}
           </Route>
         </Routes>

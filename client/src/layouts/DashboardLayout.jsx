@@ -1,7 +1,15 @@
 // DashboardLayout — shared shell for every authenticated role workspace.
 // Sidebar nav is role-aware; later phases append items to NAV_BY_ROLE.
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, LogOut, User, Building2 } from 'lucide-react';
+import {
+  LayoutDashboard,
+  LogOut,
+  User,
+  Building2,
+  Users,
+  ShieldCheck,
+  UserCheck,
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const dashboard = { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true };
@@ -9,8 +17,16 @@ const dashboard = { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard,
 const NAV_BY_ROLE = {
   student: [dashboard, { to: '/dashboard/profile', label: 'My Profile', icon: User }],
   company: [dashboard, { to: '/dashboard/profile', label: 'Company Profile', icon: Building2 }],
-  university: [dashboard, { to: '/dashboard/profile', label: 'University Profile', icon: Building2 }],
-  admin: [dashboard],
+  university: [
+    dashboard,
+    { to: '/dashboard/profile', label: 'University Profile', icon: Building2 },
+    { to: '/dashboard/students', label: 'Student Verification', icon: UserCheck },
+  ],
+  admin: [
+    dashboard,
+    { to: '/dashboard/users', label: 'Users', icon: Users },
+    { to: '/dashboard/verification', label: 'Verification', icon: ShieldCheck },
+  ],
 };
 
 export default function DashboardLayout() {

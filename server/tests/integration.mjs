@@ -175,7 +175,71 @@ async function phase3() {
   );
 }
 
-const phases = [phase1, phase2, phase3];
+// ── Phase 4 — verification & admin management ──
+async function phase4() {
+  lines.push('');
+  lines.push('Phase 4 — verification & admin management');
+
+  const adminLogin = await api('/api/auth/login', {
+    method: 'POST',
+    body: { email: 'admin@internconnect.et', password: 'Password123!' },
+  });
+  ctx.adminToken = adminLogin.json?.token;
+  check('admin can log in', adminLogin.status === 200 && adminLogin.json?.user?.userType === 'admin');
+
+  const stats = await api('/api/admin/stats', { token: ctx.adminToken });
+  check('admin stats endpoint works', stats.status === 200 && typeof stats.json?.stats?.users === 'number');
+
+  const users = await api('/api/admin/users', { token: ctx.adminToken });
+  check('admin can list users', users.status === 200 && Array.isArray(users.json?.users));
+
+  const blocked = await api('/api/admin/users', { token: ctx.studentToken });
+  check('non-admin is blocked from admin routes', blocked.status === 403);
+
+  const orgs = await api('/api/admin/organizations', { token: ctx.adminToken });
+  check('admin can list organizations', orgs.status === 200 && Array.isArray(orgs.json?.companies));
+
+  const company = orgs.json?.companies?.[0];
+  const verified = company
+    ? await api(`/api/admin/organizations/company/${company._id}/verify`, {
+        method: 'PATCH',
+        token: ctx.adminToken,
+        body: { decision: 'approved' },
+      })
+    : { status: 0, json: {} };
+  check('admin can verify a company', verified.status === 200 && verified.json?.entity?.verified === true);
+
+  const tmpReg = await api('/api/auth/register', {
+    method: 'POST',
+    body: { firstName: 'Tmp', lastName: 'User', email: `suspend.${Date.now()}@test.et`, password: 'Password123!', userType: 'student' },
+  });
+  const suspend = await api(`/api/admin/users/${tmpReg.json?.user?.id}/status`, {
+    method: 'PATCH',
+    token: ctx.adminToken,
+    body: { status: 'suspended' },
+  });
+  check('admin can suspend a user', suspend.status === 200 && suspend.json?.user?.status === 'suspended');
+
+  const students = await api('/api/universities/students', { token: ctx.universityToken });
+  check('university can list its students', students.status === 200 && Array.isArray(students.json?.students));
+
+  const pending = students.json?.students?.find((s) => s.verificationStatus !== 'verified');
+  const verifyStudent = pending
+    ? await api(`/api/universities/students/${pending._id}/verify`, {
+        method: 'PATCH',
+        token: ctx.universityToken,
+        body: { decision: 'approved' },
+      })
+    : { status: 0, json: {} };
+  check(
+    'university can verify a student',
+    pending
+      ? verifyStudent.status === 200 && verifyStudent.json?.student?.verificationStatus === 'verified'
+      : (students.json?.students?.length || 0) > 0,
+  );
+}
+
+const phases = [phase1, phase2, phase3, phase4];
 
 async function main() {
   for (const phase of phases) {
