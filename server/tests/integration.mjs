@@ -117,7 +117,65 @@ async function phase2() {
   check('account locks after 5 failed logins', afterLock.status === 423);
 }
 
-const phases = [phase1, phase2];
+// ── Phase 3 — profiles & registration ──
+async function phase3() {
+  lines.push('');
+  lines.push('Phase 3 — profiles & registration');
+
+  const studentUpdate = await api('/api/students/me', {
+    method: 'PUT',
+    token: ctx.studentToken,
+    body: { major: 'Computer Science', studentId: 'UGR/4403/15', gpa: 3.8, skills: ['React', 'Node.js'] },
+  });
+  check(
+    'student can update profile',
+    studentUpdate.status === 200 && studentUpdate.json?.profile?.major === 'Computer Science',
+  );
+
+  const studentGet = await api('/api/students/me', { token: ctx.studentToken });
+  check('student profile persists', studentGet.status === 200 && studentGet.json?.profile?.gpa === 3.8);
+
+  const unis = await api('/api/universities', { token: ctx.studentToken });
+  check(
+    'universities list is available',
+    unis.status === 200 && Array.isArray(unis.json?.universities) && unis.json.universities.length > 0,
+  );
+
+  const crossRole = await api('/api/companies/me', { token: ctx.studentToken });
+  check('student is blocked from company routes (RBAC)', crossRole.status === 403);
+
+  const compLogin = await api('/api/auth/login', {
+    method: 'POST',
+    body: { email: 'hr@zemen-tech.et', password: 'Password123!' },
+  });
+  ctx.companyToken = compLogin.json?.token;
+  const compUpdate = await api('/api/companies/me', {
+    method: 'PUT',
+    token: ctx.companyToken,
+    body: { name: 'Zemen Technologies', industry: 'Software', city: 'Addis Ababa' },
+  });
+  check(
+    'company can update profile (profileComplete flips)',
+    compUpdate.status === 200 && compUpdate.json?.profileComplete === true,
+  );
+
+  const uniLogin = await api('/api/auth/login', {
+    method: 'POST',
+    body: { email: 'coordinator@aau.edu.et', password: 'Password123!' },
+  });
+  ctx.universityToken = uniLogin.json?.token;
+  const uniUpdate = await api('/api/universities/me', {
+    method: 'PUT',
+    token: ctx.universityToken,
+    body: { name: 'Addis Ababa University', country: 'Ethiopia', city: 'Addis Ababa', departments: ['Computer Science'] },
+  });
+  check(
+    'university can update profile (profileComplete flips)',
+    uniUpdate.status === 200 && uniUpdate.json?.profileComplete === true,
+  );
+}
+
+const phases = [phase1, phase2, phase3];
 
 async function main() {
   for (const phase of phases) {
