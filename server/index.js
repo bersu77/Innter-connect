@@ -13,6 +13,7 @@ import verificationRoutes from './routes/verificationRoutes.js';
 import internshipRoutes from './routes/internshipRoutes.js';
 import invitationRoutes from './routes/invitationRoutes.js';
 import applicationRoutes from './routes/applicationRoutes.js';
+import placementRoutes from './routes/placementRoutes.js';
 import errorHandler from './middleware/errorHandler.js';
 
 const app = express();
@@ -45,6 +46,7 @@ app.use('/api/verifications', verificationRoutes);
 app.use('/api/internships', internshipRoutes);
 app.use('/api/invitations', invitationRoutes);
 app.use('/api/applications', applicationRoutes);
+app.use('/api/placements', placementRoutes);
 
 // Error handler (must be last)
 app.use(errorHandler);

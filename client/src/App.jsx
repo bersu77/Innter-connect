@@ -19,6 +19,7 @@ import PostInternshipPage from './pages/dashboard/PostInternshipPage'
 import PartnersPage from './pages/dashboard/PartnersPage'
 import InvitationsPage from './pages/dashboard/InvitationsPage'
 import ApplicationsPage from './pages/dashboard/ApplicationsPage'
+import PlacementsPage from './pages/dashboard/PlacementsPage'
 
 function App() {
   return (
@@ -60,6 +61,7 @@ function App() {
             <Route path="/dashboard/partners" element={<PartnersPage />} />
             <Route path="/dashboard/invitations" element={<InvitationsPage />} />
             <Route path="/dashboard/applications" element={<ApplicationsPage />} />
+            <Route path="/dashboard/placements" element={<PlacementsPage />} />
             {/* Feature routes (tasks, reports, …) are added by later phases. */}
           </Route>
         </Routes>

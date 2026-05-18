@@ -15,7 +15,7 @@ const STATUS_TONE = {
 const label = (s) => (s || '').replace(/_/g, ' ');
 
 // Company review actions available at each application status.
-const NEXT_ACTIONS = {
+const COMPANY_ACTIONS = {
   submitted: [
     { status: 'under_review', label: 'Start review', variant: 'primary' },
     { status: 'rejected', label: 'Reject', variant: 'secondary' },
@@ -55,11 +55,11 @@ export default function ApplicationsPage() {
     load();
   }, []);
 
-  async function changeStatus(id, status) {
+  async function run(id, fn) {
     setBusyId(id);
     setError('');
     try {
-      await applicationApi.updateStatus(id, status);
+      await fn();
       await load();
     } catch (err) {
       setError(err.response?.data?.message || 'Action failed.');
@@ -77,7 +77,7 @@ export default function ApplicationsPage() {
         <p className="mt-1 text-sm text-slate-500">
           {isCompany
             ? 'Review, shortlist, and decide on applications to your internships.'
-            : 'Track the status of every internship you have applied to.'}
+            : 'Track every internship you have applied to and respond to offers.'}
         </p>
       </div>
 
@@ -134,19 +134,54 @@ export default function ApplicationsPage() {
                 <span className="text-xs text-slate-400">
                   Submitted {new Date(app.submittedAt || app.createdAt).toLocaleDateString()}
                 </span>
-                {isCompany && NEXT_ACTIONS[app.status] && (
+
+                {/* Company review actions */}
+                {isCompany && COMPANY_ACTIONS[app.status] && (
                   <div className="flex gap-2">
-                    {NEXT_ACTIONS[app.status].map((action) => (
+                    {COMPANY_ACTIONS[app.status].map((action) => (
                       <Button
                         key={action.status}
                         size="sm"
                         variant={action.variant}
                         loading={busyId === app._id}
-                        onClick={() => changeStatus(app._id, action.status)}
+                        onClick={() =>
+                          run(app._id, () => applicationApi.updateStatus(app._id, action.status))
+                        }
                       >
                         {action.label}
                       </Button>
                     ))}
+                  </div>
+                )}
+
+                {/* Student actions */}
+                {!isCompany && app.status === 'submitted' && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    loading={busyId === app._id}
+                    onClick={() => run(app._id, () => applicationApi.withdraw(app._id))}
+                  >
+                    Withdraw
+                  </Button>
+                )}
+                {!isCompany && app.status === 'offered' && (
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      loading={busyId === app._id}
+                      onClick={() => run(app._id, () => applicationApi.respondOffer(app._id, 'accept'))}
+                    >
+                      Accept offer
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      loading={busyId === app._id}
+                      onClick={() => run(app._id, () => applicationApi.respondOffer(app._id, 'reject'))}
+                    >
+                      Decline
+                    </Button>
                   </div>
                 )}
               </div>
