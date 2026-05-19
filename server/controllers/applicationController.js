@@ -48,6 +48,53 @@ export const applyToInternship = async (req, res, next) => {
         .json({ success: false, message: 'You have already applied to this internship' });
     }
 
+    // Attachments: snapshots of the profile items the student chose to include,
+    // plus any files uploaded manually with the application. Profile items are
+    // snapshotted server-side from the real profile, not trusted from the client.
+    let selected = req.body.selectedItems || [];
+    if (typeof selected === 'string') {
+      try {
+        selected = JSON.parse(selected);
+      } catch {
+        selected = [];
+      }
+    }
+    if (!Array.isArray(selected)) selected = [];
+    const attachments = [];
+    for (const sel of selected) {
+      if (sel?.kind === 'cv' && student.cv?.path) {
+        attachments.push({
+          kind: 'cv',
+          label: student.cv.filename || 'CV / Résumé',
+          path: student.cv.path,
+          link: student.cv.path,
+        });
+      } else if (sel?.kind === 'certification' && student.certifications?.[sel.index]) {
+        const c = student.certifications[sel.index];
+        attachments.push({ kind: 'certification', label: c.name, detail: c.issuer, link: c.credentialUrl });
+      } else if (sel?.kind === 'experience' && student.experience?.[sel.index]) {
+        const e = student.experience[sel.index];
+        attachments.push({
+          kind: 'experience',
+          label: e.role,
+          detail: [e.organization, [e.startDate, e.endDate].filter(Boolean).join(' – ')]
+            .filter(Boolean)
+            .join(' · '),
+        });
+      } else if (sel?.kind === 'portfolio' && student.portfolio?.[sel.index]) {
+        const p = student.portfolio[sel.index];
+        attachments.push({ kind: 'portfolio', label: p.title, detail: p.description, link: p.link });
+      }
+    }
+    for (const f of req.files || []) {
+      attachments.push({
+        kind: 'upload',
+        label: f.originalname,
+        filename: f.originalname,
+        path: `/uploads/${f.filename}`,
+      });
+    }
+
     const application = await Application.create({
       studentId: student._id,
       internshipId,
@@ -55,6 +102,7 @@ export const applyToInternship = async (req, res, next) => {
       universityId,
       universityVerification: { status: 'pending' },
       coverLetter,
+      attachments,
       status: 'submitted',
       submittedAt: new Date(),
       statusHistory: [{ status: 'submitted', changedBy: req.user._id }],

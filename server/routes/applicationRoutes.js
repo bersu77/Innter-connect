@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { protect, authorize } from '../middleware/auth.js';
+import { upload } from '../middleware/upload.js';
 import {
   applyToInternship,
   listApplications,
@@ -13,7 +14,13 @@ import {
 const router = Router();
 
 router.get('/', protect, listApplications);
-router.post('/', protect, authorize('student'), applyToInternship);
+router.post(
+  '/',
+  protect,
+  authorize('student'),
+  upload.array('attachments', 5),
+  applyToInternship,
+);
 router.get('/:id', protect, getApplication);
 router.patch('/:id/status', protect, authorize('company'), updateApplicationStatus);
 router.patch('/:id/verify', protect, authorize('university'), verifyApplication);

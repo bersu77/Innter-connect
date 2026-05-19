@@ -4,10 +4,17 @@ import client from './client';
 export const applicationApi = {
   list: (params) => client.get('/applications', { params }).then((r) => r.data),
   get: (id) => client.get(`/applications/${id}`).then((r) => r.data),
-  apply: (internshipId, coverLetter, universityId) =>
-    client
-      .post('/applications', { internshipId, coverLetter, universityId })
-      .then((r) => r.data),
+  // selectedItems: profile-item references [{ kind, index }] to attach;
+  // files: manually uploaded files to attach alongside.
+  apply: (internshipId, { coverLetter = '', universityId, selectedItems = [], files = [] } = {}) => {
+    const fd = new FormData();
+    fd.append('internshipId', internshipId);
+    fd.append('coverLetter', coverLetter);
+    if (universityId) fd.append('universityId', universityId);
+    fd.append('selectedItems', JSON.stringify(selectedItems));
+    files.forEach((f) => fd.append('attachments', f));
+    return client.post('/applications', fd).then((r) => r.data);
+  },
   updateStatus: (id, status, note) =>
     client.patch(`/applications/${id}/status`, { status, note }).then((r) => r.data),
   // University verifies (or rejects) the student behind an application.

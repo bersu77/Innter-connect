@@ -17,6 +17,9 @@ const PROFILE_FIELDS = [
   'availableSince',
   'desiredLocations',
   'workAuthorization',
+  'certifications',
+  'experience',
+  'portfolio',
 ];
 
 // A profile is complete once the core academic fields and a CV are in place —

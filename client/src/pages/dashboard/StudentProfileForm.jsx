@@ -20,6 +20,56 @@ const EMPTY = {
   workAuthorization: '',
 };
 
+// A compact add/remove editor for a repeating list of profile items.
+function ListEditor({ label, hint, items, setItems, fields, summary }) {
+  const [draft, setDraft] = useState({});
+  function add() {
+    if (!fields.some((f) => (draft[f.key] || '').trim())) return;
+    setItems([...items, draft]);
+    setDraft({});
+  }
+  return (
+    <div className="sm:col-span-2">
+      <p className="text-sm font-medium text-slate-700">{label}</p>
+      {hint && <p className="mt-0.5 text-xs text-slate-400">{hint}</p>}
+      {items.length > 0 && (
+        <ul className="mb-2 mt-2 space-y-1">
+          {items.map((it, i) => (
+            <li
+              key={i}
+              className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-1.5 text-sm"
+            >
+              <span className="min-w-0 truncate text-slate-600">{summary(it)}</span>
+              <button
+                type="button"
+                aria-label="Remove"
+                onClick={() => setItems(items.filter((_, j) => j !== i))}
+                className="shrink-0 text-slate-400 transition-colors hover:text-red-500"
+              >
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="mt-2 flex flex-wrap gap-2">
+        {fields.map((f) => (
+          <input
+            key={f.key}
+            value={draft[f.key] || ''}
+            onChange={(e) => setDraft((d) => ({ ...d, [f.key]: e.target.value }))}
+            placeholder={f.placeholder}
+            className="h-9 min-w-[8rem] flex-1 rounded-xl bg-white px-3 text-sm text-slate-900 ring-1 ring-slate-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+          />
+        ))}
+        <Button type="button" size="sm" variant="secondary" onClick={add}>
+          Add
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function StudentProfileForm() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -27,6 +77,9 @@ export default function StudentProfileForm() {
   const [universities, setUniversities] = useState([]);
   const [cv, setCv] = useState(null);
   const [form, setForm] = useState(EMPTY);
+  const [certs, setCerts] = useState([]);
+  const [experience, setExperience] = useState([]);
+  const [portfolio, setPortfolio] = useState([]);
 
   useEffect(() => {
     (async () => {
@@ -53,6 +106,9 @@ export default function StudentProfileForm() {
             workAuthorization: p.workAuthorization || '',
           });
           setCv(p.cv || null);
+          setCerts(p.certifications || []);
+          setExperience(p.experience || []);
+          setPortfolio(p.portfolio || []);
         }
       } catch {
         /* no profile yet — start blank */
@@ -79,6 +135,9 @@ export default function StudentProfileForm() {
         interests: toArr(form.interests),
         languages: toArr(form.languages),
         desiredLocations: toArr(form.desiredLocations),
+        certifications: certs,
+        experience,
+        portfolio,
       });
       setMessage({ type: 'success', text: 'Profile saved successfully.' });
     } catch (err) {
@@ -153,6 +212,46 @@ export default function StudentProfileForm() {
           <Input className="sm:col-span-2" label="Interests" value={form.interests} onChange={set('interests')} hint="Comma-separated" placeholder="Web Development, AI" />
           <Input label="Languages" value={form.languages} onChange={set('languages')} hint="Comma-separated" placeholder="Amharic, English" />
           <Input label="Desired locations" value={form.desiredLocations} onChange={set('desiredLocations')} hint="Comma-separated" placeholder="Addis Ababa, Remote" />
+
+          <ListEditor
+            label="Certifications"
+            hint="Optional — each can be suggested as an attachment when you apply."
+            items={certs}
+            setItems={setCerts}
+            fields={[
+              { key: 'name', placeholder: 'Certification name' },
+              { key: 'issuer', placeholder: 'Issuer' },
+              { key: 'credentialUrl', placeholder: 'Credential link (optional)' },
+            ]}
+            summary={(c) => `${c.name}${c.issuer ? ` — ${c.issuer}` : ''}`}
+          />
+          <ListEditor
+            label="Experience"
+            hint="Optional — previous roles you'd like to showcase."
+            items={experience}
+            setItems={setExperience}
+            fields={[
+              { key: 'role', placeholder: 'Role' },
+              { key: 'organization', placeholder: 'Organization' },
+              { key: 'startDate', placeholder: 'From (e.g. 2024)' },
+              { key: 'endDate', placeholder: 'To (e.g. 2025)' },
+              { key: 'description', placeholder: 'What you did' },
+            ]}
+            summary={(e) => `${e.role}${e.organization ? ` at ${e.organization}` : ''}`}
+          />
+          <ListEditor
+            label="Work showcase / portfolio"
+            hint="Optional — titled links to your work (GitHub, Drive, Behance, …)."
+            items={portfolio}
+            setItems={setPortfolio}
+            fields={[
+              { key: 'title', placeholder: 'Title' },
+              { key: 'link', placeholder: 'Link (URL)' },
+              { key: 'description', placeholder: 'Short description' },
+            ]}
+            summary={(p) => p.title || p.link}
+          />
+
           <div className="sm:col-span-2">
             <Button type="submit" loading={saving}>
               Save profile

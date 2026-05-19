@@ -150,6 +150,19 @@ async function seed() {
       desiredLocations: ['Addis Ababa', 'Remote'], workAuthorization: 'Ethiopian citizen',
       // A CV is a required part of a complete profile.
       cv: { filename: 'resume.pdf', path: '/uploads/seed-resume.pdf', uploadedAt: ago(35), version: 1 },
+      // Optional profile extras — suggested as application attachments.
+      certifications: [
+        { name: 'Responsive Web Design', issuer: 'freeCodeCamp', credentialUrl: 'https://www.freecodecamp.org/certification' },
+      ],
+      experience: [
+        {
+          role: 'Volunteer Web Developer', organization: 'Campus Tech Club',
+          startDate: '2024', endDate: '2025', description: 'Built and maintained the club website.',
+        },
+      ],
+      portfolio: [
+        { title: 'GitHub projects', description: 'A selection of personal projects.', link: 'https://github.com' },
+      ],
       verificationStatus: verified ? 'verified' : 'pending',
       universityVerifiedAt: verified ? ago(30) : undefined,
       verifiedBy: verified ? universities[uniIdx].coord._id : undefined,

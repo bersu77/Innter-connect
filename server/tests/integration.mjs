@@ -357,9 +357,14 @@ async function phase6() {
       internshipId,
       coverLetter: 'I am keen on DevOps and automation.',
       universityId: ctx.universityId,
+      selectedItems: [{ kind: 'cv' }],
     },
   });
   check('student can apply to an internship', apply.status === 201 && apply.json?.application?.status === 'submitted');
+  check(
+    'an application carries the chosen profile attachments',
+    (apply.json?.application?.attachments || []).some((a) => a.kind === 'cv'),
+  );
   ctx.applicationId = apply.json?.application?._id;
 
   const dup = await api('/api/applications', {
