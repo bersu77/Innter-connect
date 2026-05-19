@@ -1,74 +1,90 @@
 # Session Context — InternConnect
 
-> **Handoff snapshot** — last updated 2026-05-18. **Phases 0–13 are complete.**
-> Only Phase 14 (infrastructure & integrations) remains, intentionally deferred.
+> **Handoff snapshot** — last updated 2026-05-19.
+> Phases 0–13 are complete. **Four** post-phase feature rounds are merged to
+> `staging`, including **supervisor reassignment** (most recent). There is no
+> work in progress — a new session can start a fresh feature off `staging`.
 
 ## Project
 
 InternConnect — a MERN **Internship Management System** (Addis Ababa University
-final-year project) connecting students, companies, universities, supervisors,
-and administrators across the full internship lifecycle. Built **strictly** from
-`Fina year Project  InterConnect.pdf` (136 pages).
+final-year project) connecting students, companies, universities, supervisors, and
+administrators across the full internship lifecycle. Built **strictly** from
+`Fina year Project  InterConnect.pdf` (136 pages). Repo root: `/home/abel/bersu/Innter-connect`.
+Structure: `client/` (React+Vite) + `server/` (Express) + `BUILD_PLAN.md`.
 
-## Status: Phases 0–13 COMPLETE ✅
+## Completed & merged to `staging`
 
-The full functional system is built, tested, and merged to the **`staging`** branch.
+**Phases 0–13** — full functional system: app shell/design system; 13 Mongoose models +
+seed; auth/RBAC/audit/lockout; profiles + CV upload; verification + admin user mgmt;
+internship posting/browsing/invitations; applications & selection; offers/placement/
+withdrawal; supervisor tasks & assessments; completion & final reports; notifications +
+dashboards; reporting & analytics; audit & compliance review; NFR hardening + tests.
 
-| Phase | Delivered |
-|---|---|
-| 0 | App shell, design system, MERN restructure |
-| 1 | Data layer — 13 Mongoose models, seed script, integration harness |
-| 2 | Auth, RBAC, audit logging, notification scaffolding, account lockout |
-| 3 | Student / company / university profiles, CV upload |
-| 4 | Verification workflow + admin user management |
-| 5 | Internship posting, browsing, university↔company invitations |
-| 6 | Applications & selection (apply → review → decision) |
-| 7 | Offers, placement, withdrawal, supervisor assignment |
-| 8 | Supervisor tasks & student assessments |
-| 9 | Internship completion & final reports |
-| 10 | Notification centre + live role dashboards |
-| 11 | Reporting & analytics + CSV export |
-| 12 | Audit & compliance review, system monitoring |
-| 13 | NFR hardening (helmet, 404s, mobile nav), test suite |
+**Post-phase feature rounds (also merged to `staging`):**
+1. **Supervisor workspace** (`b818929`) — Company **Manager** vs **Supervisor** as two
+   workspaces with their own dashboards/nav (supervisor = company user with
+   `roles:['supervisor']`); manager creates supervisor accounts (username + temp
+   password); login by **email *or* username**; `PATCH /auth/credentials` to change
+   own username/password; supervisor↔student **chat** (Message model, thread per
+   placement); task **grading** (score + feedback); **verification appeals UI**;
+   **PDF/Excel/CSV** report export (`pdfkit` + `exceljs`).
+2. **Task deliverables** (`4d97493`) — supervisor marks which deliverables
+   (document / link / note) a task **requires**; student submission form enforces them
+   client- *and* server-side (`POST /tasks/:id/submit`, file upload); submitted work
+   shown to both roles.
+3. **Supervisor reassignment** (branch `feat/supervisor-reassignment`) — a company
+   **manager** can **change** a placement's supervisor, picking a **mode**:
+   `continue` (the new supervisor inherits the existing chat conversation) or `fresh`
+   (a new conversation starts; the prior thread is hidden from the active view).
+   `Placement.engagementStartedAt` is the chat-thread boundary (`fresh` moves it to
+   "now", `continue` leaves it); `Placement.supervisorHistory[]` is the audit trail.
+   `assignSupervisor` handles initial assignment **and** reassignment, validates the
+   supervisor belongs to the company, notifies new + previous supervisor + student, and
+   audits `SUPERVISOR_ASSIGN`/`SUPERVISOR_REASSIGN`. Tasks are now **placement-scoped**
+   for supervisors (`listTasks`/`gradeTask` key off `placement.supervisorId`, not
+   `task.assignedBy`), so a newly-assigned supervisor sees and can grade the
+   placement's existing tasks. PlacementsPage has a **"Change supervisor"** control.
 
-**Verification:** 84-check integration suite (`server/tests/integration.mjs`, run via
-`npm --prefix server test`) passes; frontend `npm run build` passes; full-stack
-`npm run dev` runs (client :5173, API :5000).
+**Verification baseline:** integration suite `server/tests/integration.mjs` is at
+**101/101 passing** (3 reassignment checks added); `npm run build` passes.
 
-## Git state
+## Git state & workflow
 
-- **Workflow:** `staging` holds all of Phases 0–13. `main` is frozen at the Phase 0
-  merge and was **never** merged into (per the owner's instruction).
-- Every phase has its own `feat/phase-N-*` branch — **all 14 branches are kept**, none
-  deleted. Each was merged into `staging` with a `--no-ff` merge commit.
-- Nothing has been pushed to any remote.
-- `.claude/settings.local.json` is intentionally left uncommitted (local settings).
+- Current branch: **`staging`** — all four feature rounds are merged; nothing in progress.
+- `staging` holds Phases 0–13 + the supervisor-workspace, task-deliverables and
+  supervisor-reassignment rounds.
+- `main` is frozen at the Phase 0 merge — **never merge into `main`**.
+- **Every feature has its own branch; none are ever deleted.** Feature branches merge
+  into `staging` with `--no-ff`.
+- `main` and `staging` are **pushed** to GitHub (`git@github-bersu:bersu77/Innter-connect.git`
+  — note the `github-bersu` SSH host alias; plain `github.com` uses the wrong account).
+  Branches after the push are local-only.
+- `.claude/settings.local.json` is intentionally left uncommitted.
+- Commit style: atomic, conventional messages, end with
+  `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`.
 
-## How to run
+## How to run / test
 
-- `npm run dev` from the repo root — client (`:5173`) + server (`:5000`) via concurrently.
-- `npm --prefix server run seed` — reset the demo dataset.
-- `npm --prefix server test` — run the 84-check integration suite (server must be
-  re-seeded; the suite expects a fresh DB).
-- Demo logins (password `Password123!`): `admin@internconnect.et` (admin),
-  `coordinator@aau.edu.et` (university), `hr@zemen-tech.et` (company),
-  `daniel@zemen-tech.et` (supervisor), `dawit@aau.edu.et` (student, verified),
-  `alex@aau.edu.et` (student, pending).
+- `npm run dev` (repo root) — client `:5173` + server `:5000`.
+- `npm --prefix server run seed` — reset the demo dataset (run before the test suite).
+- `node server/tests/integration.mjs` — the integration suite (server must be running + freshly seeded).
+- `npm run build` — frontend regression gate.
+- Demo logins, password `Password123!`: `admin@internconnect.et`,
+  `coordinator@aau.edu.et` (university), `hr@zemen-tech.et` (company manager),
+  `daniel` (supervisor — **username, not email**), `dawit@aau.edu.et` (student, verified),
+  `alex@aau.edu.et` (student, pending). Other supervisor usernames: `sara`, `liya`, `eden`, `helen`.
 
-## What remains — Phase 14 (NOT started, intentionally deferred)
+## Phase 14 — deferred (not started)
 
-Infrastructure & integrations, per the owner's "infrastructure last" rule:
-AWS S3 file storage, SendGrid/SMTP email + Twilio SMS channels, OAuth 2.0 + 2FA,
-Redis caching, MongoDB replica set/sharding, Docker, and cloud deployment.
-Until then: file uploads use local disk, notifications are in-app only.
+Infrastructure & integrations, per the owner's "infrastructure last" rule: AWS S3,
+SendGrid/SMTP email + Twilio SMS, OAuth 2.0 + 2FA, Redis, MongoDB replica set/sharding,
+Docker, cloud deployment. Until then: local-disk file uploads, in-app-only notifications.
 
-## Notes / known limitations
+## Notes
 
-- "Supervisor" and "Auditor" are sub-roles on the `roles[]` array of company/admin
-  users, not separate `userType`s (matches PDF Table 3.1).
-- Report export is CSV (native); on-screen reports are print-friendly. PDF/Excel
-  export libraries were not added — a candidate refinement.
-- The `Invitation` model backs FR11/UC006; it is an implementation detail not named
-  in the PDF's 10-collection list, added to support a required feature.
-- An obfuscated malware payload found in `tailwind.config.js` at the start was
-  removed in Phase 0; the repo was scanned and no other file was affected.
+- "Supervisor"/"Auditor" are `roles[]` sub-roles, not separate `userType`s (PDF Table 3.1).
+- `Invitation` and `Message` models are implementation details beyond the PDF's named
+  10 collections, added to support required features (FR11/UC006; supervisor chat).
+- An obfuscated malware payload found in `tailwind.config.js` at the start was removed
+  in Phase 0; the repo was scanned — no other file was affected.

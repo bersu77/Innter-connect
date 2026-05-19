@@ -27,7 +27,13 @@ export const listMessages = async (req, res, next) => {
   try {
     const { placement, role, error, message } = await loadThread(req);
     if (error) return res.status(error).json({ success: false, message });
-    const messages = await Message.find({ placementId: placement._id })
+    // A "fresh" reassignment moves engagementStartedAt forward, hiding the
+    // previous supervisor's conversation from the active thread.
+    const threadStart = placement.engagementStartedAt || placement.createdAt;
+    const messages = await Message.find({
+      placementId: placement._id,
+      createdAt: { $gte: threadStart },
+    })
       .populate('senderId', 'firstName lastName username userType roles')
       .sort('createdAt');
     res.json({ success: true, messages, role });

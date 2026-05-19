@@ -14,6 +14,18 @@ const placementSchema = new mongoose.Schema(
     companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
     universityId: { type: mongoose.Schema.Types.ObjectId, ref: 'University' },
     supervisorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    // Start of the current supervisor's chat interaction. A "fresh" reassignment
+    // moves this forward, so the active thread starts clean for the new supervisor.
+    engagementStartedAt: Date,
+    // Audit trail of every supervisor assignment over the placement's life.
+    supervisorHistory: [
+      {
+        supervisorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        assignedAt: Date,
+        endedAt: Date,
+        mode: { type: String, enum: ['initial', 'continue', 'fresh'] },
+      },
+    ],
     startDate: Date,
     expectedEndDate: Date,
     endDate: Date,

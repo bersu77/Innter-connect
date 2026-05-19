@@ -63,7 +63,10 @@ export const listTasks = async (req, res, next) => {
       if (!student) return res.json({ success: true, tasks: [] });
       query.studentId = student._id;
     } else {
-      query.assignedBy = req.user._id;
+      // Placement-scoped: a supervisor sees every task on the placements they
+      // currently supervise — including tasks a previous supervisor assigned.
+      const placements = await Placement.find({ supervisorId: req.user._id }).select('_id');
+      query.placementId = { $in: placements.map((p) => p._id) };
     }
     const tasks = await Task.find(query)
       .populate({ path: 'placementId', select: 'internshipId' })
@@ -121,10 +124,13 @@ export const gradeTask = async (req, res, next) => {
       select: 'userId',
     });
     if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
-    if (String(task.assignedBy) !== String(req.user._id)) {
+    // Grading authority follows the placement, not the original assigner — a
+    // reassigned supervisor can grade tasks the previous supervisor created.
+    const placement = await Placement.findById(task.placementId);
+    if (!placement || String(placement.supervisorId) !== String(req.user._id)) {
       return res
         .status(403)
-        .json({ success: false, message: 'Only the assigning supervisor can grade this task' });
+        .json({ success: false, message: 'Only the placement supervisor can grade this task' });
     }
     if (score !== undefined && score !== '') {
       const numeric = Number(score);

@@ -44,7 +44,9 @@ export const listPlacements = async (req, res, next) => {
   }
 };
 
-// @route PATCH /api/placements/:id/supervisor  (company) — assign a supervisor (UC009).
+// @route PATCH /api/placements/:id/supervisor  (company) — assign OR reassign a supervisor.
+// On reassignment the manager chooses mode: 'continue' (new supervisor inherits the
+// existing chat thread) or 'fresh' (a new conversation starts).
 export const assignSupervisor = async (req, res, next) => {
   try {
     const company = await Company.findOne({ userId: req.user._id });
@@ -54,35 +56,74 @@ export const assignSupervisor = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'This is not your placement' });
     }
     const supervisor = await User.findById(req.body.supervisorId);
-    if (!supervisor) {
+    if (!supervisor || !(supervisor.roles || []).includes('supervisor')) {
       return res.status(404).json({ success: false, message: 'Supervisor not found' });
     }
+    if (supervisor.companyId && String(supervisor.companyId) !== String(company._id)) {
+      return res
+        .status(403)
+        .json({ success: false, message: 'That supervisor belongs to another company' });
+    }
 
+    const previousId = placement.supervisorId;
+    const isReassignment = Boolean(previousId);
+    if (isReassignment && String(previousId) === String(supervisor._id)) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'That supervisor is already assigned' });
+    }
+    const mode = isReassignment ? (req.body.mode === 'fresh' ? 'fresh' : 'continue') : 'initial';
+    const now = new Date();
+
+    if (isReassignment) {
+      const open = placement.supervisorHistory.find(
+        (h) => String(h.supervisorId) === String(previousId) && !h.endedAt,
+      );
+      if (open) open.endedAt = now;
+    }
+    placement.supervisorHistory.push({ supervisorId: supervisor._id, assignedAt: now, mode });
     placement.supervisorId = supervisor._id;
     if (placement.status === 'pending') placement.status = 'active';
-    if (!placement.startDate) placement.startDate = new Date();
+    if (!placement.startDate) placement.startDate = now;
+    // Chat-thread boundary: a fresh reassignment (or the initial assignment) moves it.
+    if (mode === 'fresh' || !placement.engagementStartedAt) {
+      placement.engagementStartedAt = now;
+    }
     await placement.save();
 
     await logAudit({
       req,
-      action: 'SUPERVISOR_ASSIGN',
+      action: isReassignment ? 'SUPERVISOR_REASSIGN' : 'SUPERVISOR_ASSIGN',
       entityType: 'Placement',
       entityId: placement._id,
-      metadata: { supervisorId: supervisor._id },
+      metadata: { supervisorId: supervisor._id, mode },
     });
+
     await notify({
       userId: supervisor._id,
       type: 'placement',
       title: 'You have been assigned a student',
-      message: `You are now supervising an intern for "${placement.internshipId?.title}".`,
+      message: `You are now supervising an intern for "${placement.internshipId?.title}".${
+        mode === 'continue' ? ' You are continuing an existing conversation.' : ''
+      }`,
     });
     const student = await Student.findById(placement.studentId);
     if (student?.userId) {
       await notify({
         userId: student.userId,
         type: 'placement',
-        title: 'Supervisor assigned',
-        message: `${supervisor.firstName} ${supervisor.lastName} will supervise your internship.`,
+        title: isReassignment ? 'Your supervisor has changed' : 'Supervisor assigned',
+        message: `${supervisor.firstName} ${supervisor.lastName} ${
+          isReassignment ? 'is now your supervisor' : 'will supervise your internship'
+        }.`,
+      });
+    }
+    if (isReassignment && previousId) {
+      await notify({
+        userId: previousId,
+        type: 'placement',
+        title: 'Supervision reassigned',
+        message: `You are no longer supervising "${placement.internshipId?.title}".`,
       });
     }
     res.json({ success: true, placement });
