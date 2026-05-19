@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from '../components/NotificationBell';
+import ThemeToggle from '../components/ThemeToggle';
 
 const dashboard = { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, end: true };
 const account = { to: '/dashboard/account', label: 'Account', icon: Settings };
@@ -190,6 +191,7 @@ export default function DashboardLayout() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <NotificationBell />
             <span className="hidden text-sm font-medium text-slate-600 sm:block">{name}</span>
             <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white">

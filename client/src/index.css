@@ -144,3 +144,71 @@
     transition: none !important;
   }
 }
+
+/* ─── Dark mode ──────────────────────────────────────────────────────────────
+   The app is built with the light Tailwind palette (bg-white, text-slate-*, …).
+   Rather than add dark: variants to every element, dark mode remaps the light
+   palette to a dark one globally: each `.dark`-prefixed selector outranks the
+   bare utility on specificity, so coverage is complete and consistent. */
+.dark body {
+  background-color: #0f172a;
+  color: #cbd5e1;
+}
+
+/* Surfaces */
+.dark .bg-white { background-color: #1e293b; }
+.dark .bg-white\/70 { background-color: rgba(30, 41, 59, 0.7); }
+.dark .bg-white\/80 { background-color: rgba(30, 41, 59, 0.8); }
+.dark .bg-white\/90 { background-color: rgba(30, 41, 59, 0.9); }
+.dark .bg-white\/95 { background-color: rgba(30, 41, 59, 0.95); }
+.dark .bg-slate-50 { background-color: #0f172a; }
+.dark .bg-slate-100 { background-color: #334155; }
+
+/* Hover / active surface states */
+.dark .hover\:bg-slate-50:hover { background-color: #1e293b; }
+.dark .hover\:bg-slate-100:hover { background-color: #334155; }
+.dark .active\:bg-slate-100:active { background-color: #334155; }
+.dark .active\:bg-slate-200:active { background-color: #475569; }
+
+/* Text */
+.dark .text-slate-900 { color: #f1f5f9; }
+.dark .text-slate-800 { color: #e2e8f0; }
+.dark .text-slate-700 { color: #cbd5e1; }
+.dark .text-slate-600 { color: #cbd5e1; }
+.dark .text-slate-500 { color: #94a3b8; }
+.dark .text-slate-400 { color: #64748b; }
+
+/* Borders, rings & dividers */
+.dark .border-slate-50,
+.dark .border-slate-100,
+.dark .border-slate-200,
+.dark .border-slate-300,
+.dark .border-slate-200\/70 { border-color: #334155; }
+.dark .ring-slate-200,
+.dark .ring-slate-200\/70 { --tw-ring-color: #334155; }
+.dark .divide-slate-50 > :not([hidden]) ~ :not([hidden]) { border-color: #1e293b; }
+
+/* Accent-tinted surfaces */
+.dark .bg-brand-50 { background-color: rgba(37, 99, 235, 0.2); }
+.dark .bg-brand-50\/50 { background-color: rgba(37, 99, 235, 0.12); }
+.dark .text-brand-700 { color: #93c5fd; }
+.dark .text-brand-800 { color: #bfdbfe; }
+.dark .text-brand-800\/80 { color: rgba(191, 219, 254, 0.8); }
+.dark .file\:bg-brand-50::file-selector-button { background-color: rgba(37, 99, 235, 0.2); }
+.dark .hover\:file\:bg-brand-100:hover::file-selector-button {
+  background-color: rgba(37, 99, 235, 0.32);
+}
+
+/* Status-tinted surfaces (badges, alerts, panels) */
+.dark .bg-emerald-50 { background-color: rgba(16, 185, 129, 0.18); }
+.dark .text-emerald-700 { color: #6ee7b7; }
+.dark .text-emerald-600 { color: #34d399; }
+.dark .bg-amber-50 { background-color: rgba(245, 158, 11, 0.18); }
+.dark .text-amber-700 { color: #fcd34d; }
+.dark .text-amber-800 { color: #fcd34d; }
+.dark .text-amber-800\/80 { color: rgba(252, 211, 77, 0.8); }
+.dark .border-amber-200 { border-color: rgba(245, 158, 11, 0.35); }
+.dark .bg-red-50 { background-color: rgba(220, 38, 38, 0.18); }
+.dark .text-red-700 { color: #fca5a5; }
+.dark .text-red-600 { color: #f87171; }
+.dark .text-red-500 { color: #f87171; }
