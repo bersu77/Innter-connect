@@ -83,7 +83,13 @@ export const applyToInternship = async (req, res, next) => {
         });
       } else if (sel?.kind === 'portfolio' && student.portfolio?.[sel.index]) {
         const p = student.portfolio[sel.index];
-        attachments.push({ kind: 'portfolio', label: p.title, detail: p.description, link: p.link });
+        attachments.push({
+          kind: 'portfolio',
+          label: p.title,
+          detail: p.description,
+          link: p.link || p.path,
+          filename: p.filename,
+        });
       }
     }
     for (const f of req.files || []) {

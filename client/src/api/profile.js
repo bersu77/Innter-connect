@@ -9,6 +9,17 @@ export const studentApi = {
     fd.append('cv', file);
     return client.post('/students/me/cv', fd).then((r) => r.data);
   },
+  // Portfolio item — a titled link or an uploaded image/file.
+  addPortfolioItem: ({ title, description, link, file }) => {
+    const fd = new FormData();
+    fd.append('title', title);
+    if (description) fd.append('description', description);
+    if (link) fd.append('link', link);
+    if (file) fd.append('file', file);
+    return client.post('/students/me/portfolio', fd).then((r) => r.data);
+  },
+  removePortfolioItem: (index) =>
+    client.delete(`/students/me/portfolio/${index}`).then((r) => r.data),
 };
 
 export const companyApi = {
