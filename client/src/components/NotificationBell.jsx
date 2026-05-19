@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { notificationApi } from '../api/notifications';
 
-// Notification Center (UC019) — bell with unread badge + dropdown panel.
+// Notification Center (UC019) — v2 bell with amber unread dot + raised panel.
 export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -49,25 +49,49 @@ export default function NotificationBell() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-slate-100"
+        className="btn btn-ghost btn-sm"
+        style={{ width: 36, height: 36, padding: 0, position: 'relative' }}
         aria-label="Notifications"
       >
-        <Bell className="h-5 w-5" />
+        <Bell size={18} strokeWidth={1.6} />
         {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-600 px-1 text-[10px] font-semibold text-white">
-            {unread > 9 ? '9+' : unread}
-          </span>
+          <span
+            aria-hidden
+            className="absolute"
+            style={{
+              top: 6,
+              right: 6,
+              width: 8,
+              height: 8,
+              borderRadius: 999,
+              background: 'var(--amber-500)',
+              boxShadow: '0 0 0 2px var(--bg-raised)',
+            }}
+          />
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 z-20 mt-2 w-80 overflow-hidden rounded-2xl bg-white shadow-soft-lg ring-1 ring-slate-200/70">
-          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-            <span className="text-sm font-semibold text-slate-800">Notifications</span>
+        <div
+          className="absolute right-0 z-20 mt-2 w-80 overflow-hidden"
+          style={{
+            background: 'var(--bg-raised)',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: 'var(--shadow-3), 0 0 0 1px var(--border-default)',
+          }}
+        >
+          <div
+            className="flex items-center justify-between px-4 py-3"
+            style={{ borderBottom: '1px solid var(--border-subtle)' }}
+          >
+            <span className="t-heading-sm" style={{ color: 'var(--text-primary)' }}>
+              Notifications
+            </span>
             {unread > 0 && (
               <button
                 onClick={markAll}
-                className="text-xs font-medium text-brand-600 hover:text-brand-700"
+                className="t-mono"
+                style={{ fontSize: 11, color: 'var(--brand-600)' }}
               >
                 Mark all read
               </button>
@@ -75,19 +99,32 @@ export default function NotificationBell() {
           </div>
           <div className="max-h-96 overflow-y-auto">
             {notifications.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-slate-400">No notifications</p>
+              <p
+                className="px-4 py-8 text-center t-body-sm"
+                style={{ color: 'var(--text-tertiary)' }}
+              >
+                No notifications
+              </p>
             ) : (
-              notifications.map((n) => (
+              notifications.map((n, i) => (
                 <button
                   key={n._id}
                   onClick={() => openOne(n)}
-                  className={`flex w-full flex-col gap-0.5 border-b border-slate-50 px-4 py-3 text-left transition-colors last:border-0 hover:bg-slate-50 ${
-                    !n.read ? 'bg-brand-50/40' : ''
-                  }`}
+                  className="flex w-full flex-col gap-0.5 px-4 py-3 text-left transition-colors"
+                  style={{
+                    borderTop: i ? '1px solid var(--border-subtle)' : undefined,
+                    background: !n.read
+                      ? 'color-mix(in srgb, var(--brand-50) 60%, transparent)'
+                      : 'transparent',
+                  }}
                 >
-                  <span className="text-sm font-medium text-slate-800">{n.title}</span>
-                  <span className="text-xs text-slate-500">{n.message}</span>
-                  <span className="text-[11px] text-slate-400">
+                  <span className="t-body-md" style={{ fontWeight: 500 }}>
+                    {n.title}
+                  </span>
+                  <span className="t-body-sm" style={{ color: 'var(--text-secondary)' }}>
+                    {n.message}
+                  </span>
+                  <span className="t-mono" style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>
                     {new Date(n.createdAt).toLocaleString()}
                   </span>
                 </button>
