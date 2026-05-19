@@ -312,6 +312,10 @@ async function phase5() {
       })
     : { status: 0 };
   check('university can send an invitation', invite.status === 201);
+  check(
+    'an invitation carries its optional message',
+    invite.json?.invitation?.message === 'We would like to partner with you.',
+  );
 
   const compInvites = await api('/api/invitations', { token: ctx.companyToken });
   check('company sees received invitations', compInvites.status === 200 && Array.isArray(compInvites.json?.invitations));
