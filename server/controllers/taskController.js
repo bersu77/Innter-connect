@@ -31,10 +31,13 @@ async function applyOverdue(task) {
   return true;
 }
 
-// @route POST /api/tasks  (supervisor) — assign a task to a placement.
+// @route POST /api/tasks  (supervisor) — assign a task to one placement, or to
+// every active intern at once (assignToAll). Each student's copy is numbered
+// independently — TSK-0001 upward within that student's own task list — so the
+// same task can be one student's 3rd and another's 10th.
 export const createTask = async (req, res, next) => {
   try {
-    const { placementId, title, description, deadline, maxScore } = req.body;
+    const { title, description, deadline, maxScore } = req.body;
     if (!title) return res.status(400).json({ success: false, message: 'Task title is required' });
 
     const truthy = (v) => v === true || v === 'true';
@@ -44,41 +47,69 @@ export const createTask = async (req, res, next) => {
       note: truthy(req.body.requireNote),
     };
 
-    const placement = await Placement.findById(placementId).populate('studentId', 'userId');
-    if (!placement) {
-      return res.status(404).json({ success: false, message: 'Placement not found' });
-    }
-    if (String(placement.supervisorId) !== String(req.user._id)) {
-      return res
-        .status(403)
-        .json({ success: false, message: 'You are not the supervisor for this placement' });
+    // Resolve the target placement(s): one selected placement, or every active
+    // intern the supervisor currently has.
+    let placements;
+    if (truthy(req.body.assignToAll)) {
+      placements = await Placement.find({
+        supervisorId: req.user._id,
+        status: { $in: ['pending', 'active'] },
+      }).populate('studentId', 'userId');
+      if (!placements.length) {
+        return res
+          .status(400)
+          .json({ success: false, message: 'You have no active interns to assign a task to' });
+      }
+    } else {
+      if (!req.body.placementId) {
+        return res.status(400).json({ success: false, message: 'Select a placement' });
+      }
+      const placement = await Placement.findById(req.body.placementId).populate(
+        'studentId',
+        'userId',
+      );
+      if (!placement) {
+        return res.status(404).json({ success: false, message: 'Placement not found' });
+      }
+      if (String(placement.supervisorId) !== String(req.user._id)) {
+        return res
+          .status(403)
+          .json({ success: false, message: 'You are not the supervisor for this placement' });
+      }
+      placements = [placement];
     }
 
-    // Assign the next sequential task number — server-set and never editable.
-    const last = await Task.findOne().sort('-taskNumber').select('taskNumber');
-    const taskNumber = (last?.taskNumber || 0) + 1;
-
-    const task = await Task.create({
-      placementId,
-      studentId: placement.studentId._id,
-      assignedBy: req.user._id,
-      taskNumber,
-      title,
-      description,
-      deadline,
-      maxScore: maxScore === undefined || maxScore === '' ? 100 : Number(maxScore),
-      requiredDeliverables,
-    });
-    await logAudit({ req, action: 'TASK_ASSIGN', entityType: 'Task', entityId: task._id });
-    if (placement.studentId?.userId) {
-      await notify({
-        userId: placement.studentId.userId,
-        type: 'task',
-        title: 'New task assigned',
-        message: `Your supervisor assigned a new task: "${title}".`,
+    const maxScoreValue = maxScore === undefined || maxScore === '' ? 100 : Number(maxScore);
+    const created = [];
+    for (const placement of placements) {
+      // Per-student sequence: the next number in this student's own task list.
+      const last = await Task.findOne({ studentId: placement.studentId._id })
+        .sort('-taskNumber')
+        .select('taskNumber');
+      const task = await Task.create({
+        placementId: placement._id,
+        studentId: placement.studentId._id,
+        assignedBy: req.user._id,
+        taskNumber: (last?.taskNumber || 0) + 1,
+        title,
+        description,
+        deadline,
+        maxScore: maxScoreValue,
+        requiredDeliverables,
       });
+      created.push(task);
+      await logAudit({ req, action: 'TASK_ASSIGN', entityType: 'Task', entityId: task._id });
+      if (placement.studentId?.userId) {
+        await notify({
+          userId: placement.studentId.userId,
+          type: 'task',
+          title: 'New task assigned',
+          message: `${req.user.firstName} ${req.user.lastName} assigned you a new task: "${title}".`,
+        });
+      }
     }
-    res.status(201).json({ success: true, task });
+    // `task` (the first) keeps single-assign callers working; `tasks` carries all.
+    res.status(201).json({ success: true, task: created[0], tasks: created });
   } catch (err) {
     next(err);
   }
@@ -101,6 +132,7 @@ export const listTasks = async (req, res, next) => {
     const tasks = await Task.find(query)
       .populate({ path: 'placementId', select: 'internshipId' })
       .populate({ path: 'studentId', select: 'userId', populate: { path: 'userId', select: 'firstName lastName' } })
+      .populate({ path: 'assignedBy', select: 'firstName lastName' })
       .sort('-createdAt');
     // Enforce the missed-deadline rule on read: any task past its deadline is
     // auto-scored 0 before the list is returned.

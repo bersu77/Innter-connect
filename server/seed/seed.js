@@ -51,6 +51,10 @@ async function seed() {
   ]);
   console.log('Cleared all collections');
 
+  // Reconcile Task indexes: the task number is now unique per student, not
+  // globally — drop any stale global-unique index left by an earlier schema.
+  await Task.syncIndexes();
+
   // ── Admin ──
   const admin = await User.create({
     firstName: 'System',
@@ -238,16 +242,14 @@ async function seed() {
     'Review the pull request', 'Deploy to the staging environment',
   ];
   const TASK_STATUS = ['assigned', 'in_progress', 'completed', 'in_progress', 'completed'];
-  let taskCount = 0;
   for (let p = 0; p < placements.length; p += 1) {
     const { placement, student, company } = placements[p];
     for (let t = 0; t < 5; t += 1) {
       const status = TASK_STATUS[t];
       const graded = status === 'completed';
-      taskCount += 1;
       await Task.create({
         placementId: placement._id, studentId: student.st._id, assignedBy: company.sup._id,
-        taskNumber: taskCount,
+        taskNumber: t + 1, // per-student sequence: each student's tasks count from 1
         title: pick(TASK_TITLES, p + t),
         description: 'Complete this task to the described standard. Graded on correctness and clarity.',
         deadline: days(3 + t * 5), status, maxScore: 100,
@@ -262,22 +264,21 @@ async function seed() {
   }
 
   // Demo flavour for the first placement: an auto-zeroed overdue task and a
-  // completed task whose grade the student has appealed.
+  // completed task whose grade the student has appealed. These continue that
+  // student's own sequence (already at 5 from the loop above) → tasks 6 and 7.
   const demoTask = placements[0];
-  taskCount += 1;
   await Task.create({
     placementId: demoTask.placement._id, studentId: demoTask.student.st._id,
-    assignedBy: demoTask.company.sup._id, taskNumber: taskCount,
+    assignedBy: demoTask.company.sup._id, taskNumber: 6,
     title: 'Submit the database schema diagram',
     description: 'This task was not submitted before its deadline.',
     deadline: ago(4), status: 'overdue', maxScore: 100,
     score: 0, autoZeroed: true, gradedAt: ago(3),
     feedback: 'Automatically scored 0 — the deadline passed without a completed submission.',
   });
-  taskCount += 1;
   await Task.create({
     placementId: demoTask.placement._id, studentId: demoTask.student.st._id,
-    assignedBy: demoTask.company.sup._id, taskNumber: taskCount,
+    assignedBy: demoTask.company.sup._id, taskNumber: 7,
     title: 'Refactor the authentication module',
     description: 'Completed work — the student has appealed the grade.',
     deadline: ago(8), status: 'completed', maxScore: 100,

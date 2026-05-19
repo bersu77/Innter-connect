@@ -70,7 +70,7 @@ async function phase2() {
   lines.push('');
   lines.push('Phase 2 — auth, RBAC & notifications');
 
-  const email = `new.student.${Date.now()}@test.et`;
+  const email = `new.student.${Date.now()}@aau.edu.et`;
   const reg = await api('/api/auth/register', {
     method: 'POST',
     body: { firstName: 'New', lastName: 'Student', email, password: 'Password123!', userType: 'student' },
@@ -82,6 +82,15 @@ async function phase2() {
     body: { firstName: 'Dup', lastName: 'User', email, password: 'Password123!', userType: 'student' },
   });
   check('duplicate email is rejected', dup.status === 400);
+
+  const nonAau = await api('/api/auth/register', {
+    method: 'POST',
+    body: {
+      firstName: 'Non', lastName: 'Aau', email: `x.${Date.now()}@gmail.com`,
+      password: 'Password123!', userType: 'student',
+    },
+  });
+  check('student registration requires an @aau.edu.et email', nonAau.status === 400);
 
   const adminReg = await api('/api/auth/register', {
     method: 'POST',
@@ -102,7 +111,7 @@ async function phase2() {
   check('forgot-password responds generically', forgot.status === 200 && forgot.json?.success === true);
 
   // Account lockout after 5 failed logins.
-  const lockEmail = `lock.test.${Date.now()}@test.et`;
+  const lockEmail = `lock.test.${Date.now()}@aau.edu.et`;
   await api('/api/auth/register', {
     method: 'POST',
     body: { firstName: 'Lock', lastName: 'Test', email: lockEmail, password: 'Password123!', userType: 'student' },
@@ -211,7 +220,7 @@ async function phase4() {
 
   const tmpReg = await api('/api/auth/register', {
     method: 'POST',
-    body: { firstName: 'Tmp', lastName: 'User', email: `suspend.${Date.now()}@test.et`, password: 'Password123!', userType: 'student' },
+    body: { firstName: 'Tmp', lastName: 'User', email: `suspend.${Date.now()}@aau.edu.et`, password: 'Password123!', userType: 'student' },
   });
   const suspend = await api(`/api/admin/users/${tmpReg.json?.user?.id}/status`, {
     method: 'PATCH',
@@ -491,6 +500,10 @@ async function phase8() {
     'task can require a deliverable',
     deliverableTask.json?.task?.requiredDeliverables?.link === true,
   );
+  check(
+    'task numbers increment per student',
+    deliverableTask.json?.task?.taskNumber === task.json?.task?.taskNumber + 1,
+  );
 
   const missingSubmit = await api(`/api/tasks/${dtId}/submit`, {
     method: 'POST',
@@ -511,6 +524,22 @@ async function phase8() {
 
   // Unique task number tag — server-set, format TSK-NNNN.
   check('a task has a unique number tag', /^TSK-\d{4}$/.test(task.json?.task?.tag || ''));
+
+  // Bulk assignment — one task to every active intern at once.
+  const bulkAll = await api('/api/tasks', {
+    method: 'POST',
+    token: ctx.supervisorToken,
+    body: { assignToAll: true, title: 'Weekly stand-up notes' },
+  });
+  check(
+    'supervisor can assign a task to all interns at once',
+    bulkAll.status === 201 && Array.isArray(bulkAll.json?.tasks) && bulkAll.json.tasks.length >= 1,
+  );
+
+  // The student sees who assigned each task.
+  const studentView = await api('/api/tasks', { token: ctx.studentToken });
+  const taggedTask = studentView.json?.tasks?.find((t) => t._id === ctx.taskId);
+  check('a task shows the supervisor who assigned it', !!taggedTask?.assignedBy?.firstName);
 
   // Auto-zero on a missed deadline.
   const overdue = await api('/api/tasks', {

@@ -180,7 +180,14 @@ export default function DashboardLayout() {
             >
               <Menu className="h-5 w-5" />
             </button>
-            <span className="text-sm capitalize text-slate-400">{role} workspace</span>
+            <div className="flex flex-col leading-tight">
+              {user?.organizationName && (
+                <span className="text-sm font-semibold text-slate-700">
+                  {user.organizationName}
+                </span>
+              )}
+              <span className="text-xs capitalize text-slate-400">{role} workspace</span>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <NotificationBell />
