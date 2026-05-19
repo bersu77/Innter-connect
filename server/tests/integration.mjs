@@ -480,6 +480,35 @@ async function phase8() {
   });
   check('student can update task progress', progress.status === 200 && progress.json?.task?.status === 'in_progress');
 
+  // Required-deliverable enforcement
+  const deliverableTask = await api('/api/tasks', {
+    method: 'POST',
+    token: ctx.supervisorToken,
+    body: { placementId: ctx.placementId, title: 'Submit your design link', requireLink: true },
+  });
+  const dtId = deliverableTask.json?.task?._id;
+  check(
+    'task can require a deliverable',
+    deliverableTask.json?.task?.requiredDeliverables?.link === true,
+  );
+
+  const missingSubmit = await api(`/api/tasks/${dtId}/submit`, {
+    method: 'POST',
+    token: ctx.studentToken,
+    body: { note: 'no link provided' },
+  });
+  check('submission without a required deliverable is rejected', missingSubmit.status === 400);
+
+  const okSubmit = await api(`/api/tasks/${dtId}/submit`, {
+    method: 'POST',
+    token: ctx.studentToken,
+    body: { link: 'https://github.com/intern/project' },
+  });
+  check(
+    'submission with the required deliverable completes the task',
+    okSubmit.status === 200 && okSubmit.json?.task?.status === 'completed',
+  );
+
   const reqAssessment = await api('/api/assessments', {
     method: 'POST',
     token: ctx.studentToken,

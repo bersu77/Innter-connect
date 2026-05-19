@@ -12,6 +12,13 @@ export const createTask = async (req, res, next) => {
     const { placementId, title, description, deadline, maxScore } = req.body;
     if (!title) return res.status(400).json({ success: false, message: 'Task title is required' });
 
+    const truthy = (v) => v === true || v === 'true';
+    const requiredDeliverables = {
+      document: truthy(req.body.requireDocument),
+      link: truthy(req.body.requireLink),
+      note: truthy(req.body.requireNote),
+    };
+
     const placement = await Placement.findById(placementId).populate('studentId', 'userId');
     if (!placement) {
       return res.status(404).json({ success: false, message: 'Placement not found' });
@@ -30,6 +37,7 @@ export const createTask = async (req, res, next) => {
       description,
       deadline,
       maxScore: maxScore === undefined || maxScore === '' ? 100 : Number(maxScore),
+      requiredDeliverables,
     });
     await logAudit({ req, action: 'TASK_ASSIGN', entityType: 'Task', entityId: task._id });
     if (placement.studentId?.userId) {
@@ -70,10 +78,8 @@ export const listTasks = async (req, res, next) => {
 // @route PATCH /api/tasks/:id/progress  (student) — update task progress.
 export const updateProgress = async (req, res, next) => {
   try {
-    const { status, progressNote } = req.body;
-    if (!['in_progress', 'completed'].includes(status)) {
-      return res.status(400).json({ success: false, message: 'Invalid status' });
-    }
+    const { progressNote } = req.body;
+    // updateProgress only starts a task; completion happens through submitTask.
     const student = await Student.findOne({ userId: req.user._id });
     const task = await Task.findById(req.params.id);
     if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
@@ -81,9 +87,8 @@ export const updateProgress = async (req, res, next) => {
       return res.status(403).json({ success: false, message: 'This is not your task' });
     }
 
-    task.status = status;
+    if (task.status === 'assigned') task.status = 'in_progress';
     if (progressNote !== undefined) task.progressNote = progressNote;
-    if (status === 'completed') task.completedAt = new Date();
     await task.save();
 
     await logAudit({
@@ -91,14 +96,14 @@ export const updateProgress = async (req, res, next) => {
       action: 'TASK_PROGRESS_UPDATE',
       entityType: 'Task',
       entityId: task._id,
-      metadata: { status },
+      metadata: { status: task.status },
     });
     if (task.assignedBy) {
       await notify({
         userId: task.assignedBy,
         type: 'task',
         title: 'Task progress updated',
-        message: `A student marked "${task.title}" as ${status.replace('_', ' ')}.`,
+        message: `A student started working on "${task.title}".`,
       });
     }
     res.json({ success: true, task });
@@ -144,6 +149,61 @@ export const gradeTask = async (req, res, next) => {
         message: `Your supervisor graded "${task.title}"${
           task.score != null ? ` — ${task.score}/${task.maxScore}` : ''
         }.`,
+      });
+    }
+    res.json({ success: true, task });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @route POST /api/tasks/:id/submit  (student) — submit deliverables and complete the task.
+// Required deliverables (set by the supervisor) must be present, or the submission is rejected.
+export const submitTask = async (req, res, next) => {
+  try {
+    const student = await Student.findOne({ userId: req.user._id });
+    const task = await Task.findById(req.params.id);
+    if (!task) return res.status(404).json({ success: false, message: 'Task not found' });
+    if (!student || String(task.studentId) !== String(student._id)) {
+      return res.status(403).json({ success: false, message: 'This is not your task' });
+    }
+
+    const required = task.requiredDeliverables || {};
+    const existing = task.submission || {};
+    const link = (req.body.link || '').trim();
+    const note = (req.body.note || '').trim();
+    const documentPath = req.file ? `/uploads/${req.file.filename}` : existing.documentPath;
+    const documentName = req.file ? req.file.originalname : existing.documentName;
+
+    const missing = [];
+    if (required.document && !documentPath) missing.push('a document');
+    if (required.link && !link) missing.push('a link');
+    if (required.note && !note) missing.push('a note');
+    if (missing.length) {
+      return res.status(400).json({
+        success: false,
+        message: `This task requires ${missing.join(', ')} before it can be submitted.`,
+      });
+    }
+
+    task.submission = {
+      documentName,
+      documentPath,
+      link: link || existing.link,
+      note: note || existing.note,
+      submittedAt: new Date(),
+    };
+    task.status = 'completed';
+    task.completedAt = new Date();
+    await task.save();
+
+    await logAudit({ req, action: 'TASK_SUBMIT', entityType: 'Task', entityId: task._id });
+    if (task.assignedBy) {
+      await notify({
+        userId: task.assignedBy,
+        type: 'task',
+        title: 'Task submitted',
+        message: `A student submitted "${task.title}" for review.`,
       });
     }
     res.json({ success: true, task });

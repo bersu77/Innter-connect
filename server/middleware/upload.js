@@ -14,7 +14,12 @@ const storage = multer.diskStorage({
   },
 });
 
-const ALLOWED = ['.pdf', '.doc', '.docx'];
+// Documents (CV, reports) plus common task-deliverable file types.
+const ALLOWED = [
+  '.pdf', '.doc', '.docx', '.txt',
+  '.ppt', '.pptx', '.xls', '.xlsx',
+  '.png', '.jpg', '.jpeg', '.zip',
+];
 const fileFilter = (_req, file, cb) => {
   cb(null, ALLOWED.includes(path.extname(file.originalname).toLowerCase()));
 };
