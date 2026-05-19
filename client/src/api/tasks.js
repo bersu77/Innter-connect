@@ -8,6 +8,14 @@ export const taskApi = {
     client.patch(`/tasks/${id}/progress`, { status, progressNote }).then((r) => r.data),
   grade: (id, score, feedback) =>
     client.patch(`/tasks/${id}/grade`, { score, feedback }).then((r) => r.data),
+  // Submit deliverables (document file + link + note) and complete the task.
+  submit: (id, { document, link, note }) => {
+    const fd = new FormData();
+    if (document) fd.append('document', document);
+    if (link) fd.append('link', link);
+    if (note) fd.append('note', note);
+    return client.post(`/tasks/${id}/submit`, fd).then((r) => r.data);
+  },
 };
 
 export const assessmentApi = {

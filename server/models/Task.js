@@ -16,6 +16,20 @@ const taskSchema = new mongoose.Schema(
     },
     progressNote: String,
     completedAt: Date,
+    // Deliverables the supervisor requires the student to submit with this task.
+    requiredDeliverables: {
+      document: { type: Boolean, default: false },
+      link: { type: Boolean, default: false },
+      note: { type: Boolean, default: false },
+    },
+    // What the student submitted.
+    submission: {
+      documentName: String,
+      documentPath: String,
+      link: String,
+      note: String,
+      submittedAt: Date,
+    },
     // Grading — set by the supervisor after the task is done.
     maxScore: { type: Number, default: 100 },
     score: { type: Number },
