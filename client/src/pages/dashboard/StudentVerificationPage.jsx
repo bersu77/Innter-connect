@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { universityApi } from '../../api/profile';
 import { Badge, Button, Card, Spinner } from '../../components/ui';
+import FilterBar from '../../components/FilterBar';
 
 const TONE = { verified: 'success', pending: 'warning', unverified: 'neutral', rejected: 'danger' };
 
@@ -9,6 +10,25 @@ export default function StudentVerificationPage() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState({});
+
+  const statusOptions = [
+    ...new Set(students.map((s) => s.verificationStatus).filter(Boolean)),
+  ].sort();
+  const majorOptions = [...new Set(students.map((s) => s.major).filter(Boolean))].sort();
+  const query = search.trim().toLowerCase();
+  const visible = students.filter((s) => {
+    if (filters.status && s.verificationStatus !== filters.status) return false;
+    if (filters.major && s.major !== filters.major) return false;
+    if (!query) return true;
+    const name = s.userId ? `${s.userId.firstName} ${s.userId.lastName}` : '';
+    return [name, s.userId?.email, s.studentId, s.major]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .includes(query);
+  });
 
   async function load() {
     setLoading(true);
@@ -57,6 +77,20 @@ export default function StudentVerificationPage() {
         <div className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700">{error}</div>
       )}
 
+      {!loading && students.length > 0 && (
+        <FilterBar
+          search={search}
+          onSearch={setSearch}
+          searchPlaceholder="Search students by name, ID or major…"
+          filters={[
+            { key: 'status', label: 'Statuses', options: statusOptions },
+            { key: 'major', label: 'Majors', options: majorOptions },
+          ]}
+          values={filters}
+          onChange={(k, v) => setFilters((f) => ({ ...f, [k]: v }))}
+        />
+      )}
+
       {loading ? (
         <div className="flex justify-center py-16">
           <Spinner size="lg" className="text-brand-600" />
@@ -75,7 +109,7 @@ export default function StudentVerificationPage() {
                 </tr>
               </thead>
               <tbody>
-                {students.map((s) => (
+                {visible.map((s) => (
                   <tr key={s._id} className="border-b border-slate-50 last:border-0">
                     <td className="px-4 py-3">
                       <div className="font-medium text-slate-800">
@@ -115,7 +149,7 @@ export default function StudentVerificationPage() {
                     </td>
                   </tr>
                 ))}
-                {students.length === 0 && (
+                {visible.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-400">
                       No students enrolled yet.

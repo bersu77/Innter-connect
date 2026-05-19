@@ -4,6 +4,7 @@ import { Plus, MapPin } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { internshipApi } from '../../api/internships';
 import { Badge, Button, Card, Input, Spinner } from '../../components/ui';
+import FilterBar from '../../components/FilterBar';
 
 const STATUS_TONE = { active: 'success', draft: 'neutral', closed: 'warning', archived: 'neutral' };
 
@@ -44,6 +45,15 @@ export default function InternshipsPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState({});
+
+  const statusOptions = [...new Set(items.map((i) => i.status).filter(Boolean))].sort();
+  const typeOptions = [...new Set(items.map((i) => i.position?.type).filter(Boolean))].sort();
+  const visible = items.filter(
+    (i) =>
+      (!filters.status || i.status === filters.status) &&
+      (!filters.type || i.position?.type === filters.type),
+  );
 
   async function load(term = '') {
     setLoading(true);
@@ -104,6 +114,17 @@ export default function InternshipsPage() {
         </form>
       )}
 
+      {!loading && items.length > 0 && (
+        <FilterBar
+          filters={[
+            { key: 'status', label: 'Statuses', options: statusOptions },
+            { key: 'type', label: 'Types', options: typeOptions },
+          ]}
+          values={filters}
+          onChange={(k, v) => setFilters((f) => ({ ...f, [k]: v }))}
+        />
+      )}
+
       {loading ? (
         <div className="flex justify-center py-16">
           <Spinner size="lg" className="text-brand-600" />
@@ -114,9 +135,13 @@ export default function InternshipsPage() {
             ? 'No postings yet. Create your first internship.'
             : 'No internships found. Try a different search.'}
         </Card>
+      ) : visible.length === 0 ? (
+        <Card className="p-10 text-center text-sm text-slate-400">
+          No internships match your filters.
+        </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          {items.map((it) => (
+          {visible.map((it) => (
             <InternshipCard key={it._id} internship={it} />
           ))}
         </div>

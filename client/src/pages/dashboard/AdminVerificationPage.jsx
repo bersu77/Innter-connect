@@ -1,12 +1,26 @@
 import { useEffect, useState } from 'react';
 import { adminApi } from '../../api/admin';
 import { Badge, Button, Card, Spinner } from '../../components/ui';
+import FilterBar from '../../components/FilterBar';
 
 export default function AdminVerificationPage() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState({});
+
+  const orgStatus = (o) => (o.verified ? 'verified' : 'pending');
+  const typeOptions = [...new Set(rows.map((r) => r.type).filter(Boolean))].sort();
+  const statusOptions = [...new Set(rows.map(orgStatus))].sort();
+  const query = search.trim().toLowerCase();
+  const visible = rows.filter((r) => {
+    if (filters.type && r.type !== filters.type) return false;
+    if (filters.status && orgStatus(r) !== filters.status) return false;
+    if (!query) return true;
+    return [r.name, r.city, r.country].filter(Boolean).join(' ').toLowerCase().includes(query);
+  });
 
   async function load() {
     setLoading(true);
@@ -56,6 +70,20 @@ export default function AdminVerificationPage() {
         <div className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700">{error}</div>
       )}
 
+      {!loading && rows.length > 0 && (
+        <FilterBar
+          search={search}
+          onSearch={setSearch}
+          searchPlaceholder="Search organisations by name or location…"
+          filters={[
+            { key: 'type', label: 'Types', options: typeOptions },
+            { key: 'status', label: 'Statuses', options: statusOptions },
+          ]}
+          values={filters}
+          onChange={(k, v) => setFilters((f) => ({ ...f, [k]: v }))}
+        />
+      )}
+
       {loading ? (
         <div className="flex justify-center py-16">
           <Spinner size="lg" className="text-brand-600" />
@@ -73,7 +101,7 @@ export default function AdminVerificationPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((org) => (
+                {visible.map((org) => (
                   <tr key={`${org.type}-${org._id}`} className="border-b border-slate-50 last:border-0">
                     <td className="px-4 py-3">
                       <div className="font-medium text-slate-800">{org.name}</div>
@@ -110,7 +138,7 @@ export default function AdminVerificationPage() {
                     </td>
                   </tr>
                 ))}
-                {rows.length === 0 && (
+                {visible.length === 0 && (
                   <tr>
                     <td colSpan={4} className="px-4 py-10 text-center text-sm text-slate-400">
                       No organizations to review.

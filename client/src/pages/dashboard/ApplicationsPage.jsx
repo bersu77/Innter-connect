@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { applicationApi } from '../../api/applications';
 import { Badge, Button, Card, Spinner } from '../../components/ui';
+import FilterBar from '../../components/FilterBar';
 
 const STATUS_TONE = {
   submitted: 'neutral',
@@ -38,6 +39,23 @@ export default function ApplicationsPage() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState({});
+
+  const statusOptions = [...new Set(apps.map((a) => a.status).filter(Boolean))].sort();
+  const query = search.trim().toLowerCase();
+  const visible = apps.filter((a) => {
+    if (filters.status && a.status !== filters.status) return false;
+    if (!query) return true;
+    const name = a.studentId?.userId
+      ? `${a.studentId.userId.firstName} ${a.studentId.userId.lastName}`
+      : '';
+    return [a.internshipId?.title, a.internshipId?.companyId?.name, name, a.studentId?.major]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .includes(query);
+  });
 
   async function load() {
     setLoading(true);
@@ -85,6 +103,17 @@ export default function ApplicationsPage() {
         <div className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700">{error}</div>
       )}
 
+      {!loading && apps.length > 0 && (
+        <FilterBar
+          search={search}
+          onSearch={setSearch}
+          searchPlaceholder="Search by name, internship or company…"
+          filters={[{ key: 'status', label: 'Statuses', options: statusOptions }]}
+          values={filters}
+          onChange={(k, v) => setFilters((f) => ({ ...f, [k]: v }))}
+        />
+      )}
+
       {loading ? (
         <div className="flex justify-center py-16">
           <Spinner size="lg" className="text-brand-600" />
@@ -93,9 +122,13 @@ export default function ApplicationsPage() {
         <Card className="p-10 text-center text-sm text-slate-400">
           {isCompany ? 'No applications received yet.' : 'You have not applied to any internships yet.'}
         </Card>
+      ) : visible.length === 0 ? (
+        <Card className="p-10 text-center text-sm text-slate-400">
+          No applications match your filters.
+        </Card>
       ) : (
         <div className="space-y-3">
-          {apps.map((app) => (
+          {visible.map((app) => (
             <Card key={app._id} className="p-5">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
