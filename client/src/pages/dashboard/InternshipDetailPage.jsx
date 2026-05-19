@@ -4,7 +4,8 @@ import { MapPin, Calendar, Briefcase, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { internshipApi } from '../../api/internships';
 import { applicationApi } from '../../api/applications';
-import { Badge, Button, Card, Spinner, Textarea } from '../../components/ui';
+import { studentApi, universityApi } from '../../api/profile';
+import { Badge, Button, Card, Select, Spinner, Textarea } from '../../components/ui';
 
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString() : '—');
 
@@ -20,6 +21,8 @@ export default function InternshipDetailPage() {
 
   // Apply (student)
   const [coverLetter, setCoverLetter] = useState('');
+  const [universities, setUniversities] = useState([]);
+  const [universityId, setUniversityId] = useState('');
   const [applying, setApplying] = useState(false);
   const [applyMessage, setApplyMessage] = useState(null);
   const [applied, setApplied] = useState(false);
@@ -37,11 +40,33 @@ export default function InternshipDetailPage() {
     })();
   }, [id]);
 
+  // A student picks the university they are enrolled at — pre-filled from their
+  // profile. That university verifies the application before the company acts.
+  useEffect(() => {
+    if (role !== 'student') return;
+    (async () => {
+      try {
+        const [uniRes, profileRes] = await Promise.all([
+          universityApi.list(),
+          studentApi.getProfile(),
+        ]);
+        setUniversities(uniRes.universities || []);
+        setUniversityId(profileRes.profile?.universityId || '');
+      } catch {
+        /* non-fatal — the student can still pick a university below */
+      }
+    })();
+  }, [role]);
+
   async function handleApply() {
+    if (!universityId) {
+      setApplyMessage({ type: 'error', text: 'Select the university you are enrolled at.' });
+      return;
+    }
     setApplying(true);
     setApplyMessage(null);
     try {
-      await applicationApi.apply(id, coverLetter);
+      await applicationApi.apply(id, coverLetter, universityId);
       setApplied(true);
       setApplyMessage({ type: 'success', text: 'Application submitted successfully.' });
     } catch (err) {
@@ -161,6 +186,20 @@ export default function InternshipDetailPage() {
           )}
           {!applied && (
             <>
+              <Select
+                className="mt-3"
+                label="Your university"
+                value={universityId}
+                onChange={(e) => setUniversityId(e.target.value)}
+                hint="This university will verify your enrolment and documents before the company reviews your application."
+              >
+                <option value="">Select your university</option>
+                {universities.map((u) => (
+                  <option key={u._id} value={u._id}>
+                    {u.name}
+                  </option>
+                ))}
+              </Select>
               <Textarea
                 className="mt-3"
                 label="Cover letter"

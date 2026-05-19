@@ -168,24 +168,33 @@ export default function ApplicationsPage() {
                   Submitted {new Date(app.submittedAt || app.createdAt).toLocaleDateString()}
                 </span>
 
-                {/* Company review actions */}
-                {isCompany && COMPANY_ACTIONS[app.status] && (
-                  <div className="flex gap-2">
-                    {COMPANY_ACTIONS[app.status].map((action) => (
-                      <Button
-                        key={action.status}
-                        size="sm"
-                        variant={action.variant}
-                        loading={busyId === app._id}
-                        onClick={() =>
-                          run(app._id, () => applicationApi.updateStatus(app._id, action.status))
-                        }
-                      >
-                        {action.label}
-                      </Button>
-                    ))}
-                  </div>
+                {/* Company review actions — gated on university verification */}
+                {isCompany && app.universityVerification?.status !== 'approved' && (
+                  <span className="text-xs font-medium text-amber-700">
+                    {app.universityVerification?.status === 'rejected'
+                      ? 'University could not verify this student'
+                      : 'Awaiting university verification'}
+                  </span>
                 )}
+                {isCompany &&
+                  app.universityVerification?.status === 'approved' &&
+                  COMPANY_ACTIONS[app.status] && (
+                    <div className="flex gap-2">
+                      {COMPANY_ACTIONS[app.status].map((action) => (
+                        <Button
+                          key={action.status}
+                          size="sm"
+                          variant={action.variant}
+                          loading={busyId === app._id}
+                          onClick={() =>
+                            run(app._id, () => applicationApi.updateStatus(app._id, action.status))
+                          }
+                        >
+                          {action.label}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
 
                 {/* Student actions */}
                 {!isCompany && app.status === 'submitted' && (

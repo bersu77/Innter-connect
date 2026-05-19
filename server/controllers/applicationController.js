@@ -2,6 +2,7 @@ import Application from '../models/Application.js';
 import Internship from '../models/Internship.js';
 import Student from '../models/Student.js';
 import Company from '../models/Company.js';
+import University from '../models/University.js';
 import Placement from '../models/Placement.js';
 import { logAudit } from '../services/audit.js';
 import { notify } from '../services/notification.js';
@@ -17,6 +18,19 @@ export const applyToInternship = async (req, res, next) => {
       return res
         .status(400)
         .json({ success: false, message: 'Complete your student profile before applying' });
+    }
+    // The student specifies which university they are enrolled at (the apply
+    // form pre-fills it from their profile). That university verifies them
+    // before the company may act on the application.
+    const universityId = req.body.universityId || student.universityId;
+    if (!universityId) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Select the university you are enrolled at' });
+    }
+    const university = await University.findById(universityId);
+    if (!university) {
+      return res.status(404).json({ success: false, message: 'University not found' });
     }
     const internship = await Internship.findById(internshipId);
     if (!internship) {
@@ -38,7 +52,8 @@ export const applyToInternship = async (req, res, next) => {
       studentId: student._id,
       internshipId,
       companyId: internship.companyId,
-      universityId: student.universityId,
+      universityId,
+      universityVerification: { status: 'pending' },
       coverLetter,
       status: 'submitted',
       submittedAt: new Date(),
@@ -54,13 +69,23 @@ export const applyToInternship = async (req, res, next) => {
       entityId: application._id,
     });
 
+    // Notify the university — they must verify the applicant first.
+    if (university.userId) {
+      await notify({
+        userId: university.userId,
+        type: 'application',
+        title: 'Applicant needs verification',
+        message: `A student from your university applied to "${internship.title}" — please verify their enrolment and documents.`,
+        relatedEntity: { type: 'Application', id: application._id },
+      });
+    }
     const company = await Company.findById(internship.companyId);
     if (company?.userId) {
       await notify({
         userId: company.userId,
         type: 'application',
         title: 'New application received',
-        message: `A student applied to your "${internship.title}" internship.`,
+        message: `A student applied to your "${internship.title}" internship — pending university verification.`,
         relatedEntity: { type: 'Application', id: application._id },
       });
     }
@@ -101,6 +126,20 @@ export const listApplications = async (req, res, next) => {
         .populate({
           path: 'studentId',
           select: 'major gpa userId',
+          populate: { path: 'userId', select: 'firstName lastName email' },
+        })
+        .sort('-submittedAt');
+      return res.json({ success: true, applications });
+    }
+    if (req.user.userType === 'university') {
+      const university = await University.findOne({ userId: req.user._id });
+      if (!university) return res.json({ success: true, applications: [] });
+      const applications = await Application.find({ universityId: university._id })
+        .populate('internshipId', 'title')
+        .populate('companyId', 'name')
+        .populate({
+          path: 'studentId',
+          select: 'major gpa cv userId',
           populate: { path: 'userId', select: 'firstName lastName email' },
         })
         .sort('-submittedAt');
@@ -150,6 +189,14 @@ export const updateApplicationStatus = async (req, res, next) => {
     }
     if (!company || String(application.companyId) !== String(company._id)) {
       return res.status(403).json({ success: false, message: 'This is not your application to review' });
+    }
+    // Gate: the company can only act once the university has verified the student.
+    if (application.universityVerification?.status !== 'approved') {
+      return res.status(400).json({
+        success: false,
+        message:
+          'This application is awaiting university verification of the student — you cannot act on it yet.',
+      });
     }
 
     application.status = status;
@@ -298,6 +345,96 @@ export const respondToOffer = async (req, res, next) => {
       });
     }
     res.json({ success: true, application, placement });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @route PATCH /api/applications/:id/verify  (university) — verify the student
+// behind an application. The company cannot act on it until this is approved;
+// a rejection closes the application.
+export const verifyApplication = async (req, res, next) => {
+  try {
+    const { decision, note } = req.body;
+    if (!['approve', 'reject'].includes(decision)) {
+      return res.status(400).json({ success: false, message: 'Invalid decision' });
+    }
+    const university = await University.findOne({ userId: req.user._id });
+    if (!university) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Create your university profile first' });
+    }
+    const application = await Application.findById(req.params.id)
+      .populate('internshipId', 'title')
+      .populate('studentId', 'userId');
+    if (!application) {
+      return res.status(404).json({ success: false, message: 'Application not found' });
+    }
+    if (String(application.universityId) !== String(university._id)) {
+      return res
+        .status(403)
+        .json({ success: false, message: 'This applicant is not from your university' });
+    }
+    if (application.universityVerification?.status !== 'pending') {
+      return res
+        .status(400)
+        .json({ success: false, message: 'This application has already been verified' });
+    }
+
+    const now = new Date();
+    application.universityVerification = {
+      status: decision === 'approve' ? 'approved' : 'rejected',
+      reviewedBy: req.user._id,
+      reviewedAt: now,
+      note,
+    };
+    // A failed verification closes the application outright.
+    if (decision === 'reject') {
+      application.status = 'rejected';
+      application.rejectionReason = note || 'The university could not verify this student.';
+      application.rejectionDate = now;
+      application.statusHistory.push({
+        status: 'rejected',
+        changedBy: req.user._id,
+        note: note || 'University verification failed',
+      });
+    }
+    await application.save();
+
+    await logAudit({
+      req,
+      action: 'APPLICATION_VERIFY',
+      entityType: 'Application',
+      entityId: application._id,
+      metadata: { decision },
+    });
+
+    const approved = decision === 'approve';
+    const company = await Company.findById(application.companyId);
+    if (company?.userId) {
+      await notify({
+        userId: company.userId,
+        type: 'application',
+        title: approved ? 'Applicant verified by university' : 'Applicant could not be verified',
+        message: approved
+          ? `${university.name} verified an applicant for "${application.internshipId?.title}" — you can now review the application.`
+          : `${university.name} could not verify an applicant for "${application.internshipId?.title}" — the application was closed.`,
+        relatedEntity: { type: 'Application', id: application._id },
+      });
+    }
+    if (application.studentId?.userId) {
+      await notify({
+        userId: application.studentId.userId,
+        type: 'application',
+        title: approved ? 'Your application was verified' : 'Your application could not be verified',
+        message: `${university.name} ${
+          approved ? 'verified' : 'could not verify'
+        } your application for "${application.internshipId?.title}".`,
+        relatedEntity: { type: 'Application', id: application._id },
+      });
+    }
+    res.json({ success: true, application });
   } catch (err) {
     next(err);
   }

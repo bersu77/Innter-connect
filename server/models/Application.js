@@ -45,6 +45,14 @@ const applicationSchema = new mongoose.Schema(
     internshipId: { type: mongoose.Schema.Types.ObjectId, ref: 'Internship', required: true },
     companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
     universityId: { type: mongoose.Schema.Types.ObjectId, ref: 'University' },
+    // The applicant's university verifies the student (genuine enrolment +
+    // documents) before the company may act on the application.
+    universityVerification: {
+      status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+      reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      reviewedAt: Date,
+      note: String,
+    },
     coverLetter: String,
     attachments: { type: [attachmentSchema], default: [] },
     applicationScore: { type: Number, default: 0 },

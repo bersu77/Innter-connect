@@ -28,6 +28,7 @@ import AccountPage from './pages/dashboard/AccountPage'
 import SupervisorsPage from './pages/dashboard/SupervisorsPage'
 import MessagesPage from './pages/dashboard/MessagesPage'
 import AppealsPage from './pages/dashboard/AppealsPage'
+import ApplicationVerificationPage from './pages/dashboard/ApplicationVerificationPage'
 import NotFoundPage from './pages/NotFoundPage'
 
 function App() {
@@ -70,6 +71,10 @@ function App() {
             <Route path="/dashboard/partners" element={<PartnersPage />} />
             <Route path="/dashboard/invitations" element={<InvitationsPage />} />
             <Route path="/dashboard/applications" element={<ApplicationsPage />} />
+            <Route
+              path="/dashboard/application-verification"
+              element={<ApplicationVerificationPage />}
+            />
             <Route path="/dashboard/placements" element={<PlacementsPage />} />
             <Route path="/dashboard/tasks" element={<TasksPage />} />
             <Route path="/dashboard/assessments" element={<AssessmentsPage />} />

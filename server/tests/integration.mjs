@@ -346,10 +346,18 @@ async function phase6() {
   });
   const internshipId = posted.json?.internship?._id;
 
+  // The student names the university they are enrolled at on the application.
+  const uniMe = await api('/api/universities/me', { token: ctx.universityToken });
+  ctx.universityId = uniMe.json?.profile?._id;
+
   const apply = await api('/api/applications', {
     method: 'POST',
     token: ctx.studentToken,
-    body: { internshipId, coverLetter: 'I am keen on DevOps and automation.' },
+    body: {
+      internshipId,
+      coverLetter: 'I am keen on DevOps and automation.',
+      universityId: ctx.universityId,
+    },
   });
   check('student can apply to an internship', apply.status === 201 && apply.json?.application?.status === 'submitted');
   ctx.applicationId = apply.json?.application?._id;
@@ -357,7 +365,7 @@ async function phase6() {
   const dup = await api('/api/applications', {
     method: 'POST',
     token: ctx.studentToken,
-    body: { internshipId, coverLetter: 'again' },
+    body: { internshipId, coverLetter: 'again', universityId: ctx.universityId },
   });
   check('duplicate application is rejected', dup.status === 400);
 
@@ -371,6 +379,31 @@ async function phase6() {
   check(
     'company sees received applications',
     received.status === 200 && received.json.applications.some((a) => a._id === ctx.applicationId),
+  );
+
+  // Gate: the company cannot act until the university verifies the student.
+  const blockedEarly = await api(`/api/applications/${ctx.applicationId}/status`, {
+    method: 'PATCH',
+    token: ctx.companyToken,
+    body: { status: 'under_review' },
+  });
+  check('company cannot act before university verification', blockedEarly.status === 400);
+
+  const uniApps = await api('/api/applications', { token: ctx.universityToken });
+  check(
+    'university sees applications from its students',
+    uniApps.status === 200 && uniApps.json.applications.some((a) => a._id === ctx.applicationId),
+  );
+
+  const verify = await api(`/api/applications/${ctx.applicationId}/verify`, {
+    method: 'PATCH',
+    token: ctx.universityToken,
+    body: { decision: 'approve', note: 'Enrolment confirmed.' },
+  });
+  check(
+    'university can verify a student application',
+    verify.status === 200 &&
+      verify.json?.application?.universityVerification?.status === 'approved',
   );
 
   const review = await api(`/api/applications/${ctx.applicationId}/status`, {
@@ -396,6 +429,33 @@ async function phase6() {
 
   const detail = await api(`/api/applications/${ctx.applicationId}`, { token: ctx.companyToken });
   check('application detail includes status history', detail.status === 200 && (detail.json?.application?.statusHistory?.length || 0) >= 1);
+
+  // University rejection closes the application outright.
+  const posted2 = await api('/api/internships', {
+    method: 'POST',
+    token: ctx.companyToken,
+    body: { title: 'QA Intern', description: 'Manual and automated testing.', status: 'active' },
+  });
+  const apply2 = await api('/api/applications', {
+    method: 'POST',
+    token: ctx.studentToken,
+    body: {
+      internshipId: posted2.json?.internship?._id,
+      coverLetter: 'Interested in QA.',
+      universityId: ctx.universityId,
+    },
+  });
+  const rejectVerify = await api(`/api/applications/${apply2.json?.application?._id}/verify`, {
+    method: 'PATCH',
+    token: ctx.universityToken,
+    body: { decision: 'reject', note: 'Could not confirm enrolment.' },
+  });
+  check(
+    'university rejection closes the application',
+    rejectVerify.status === 200 &&
+      rejectVerify.json?.application?.status === 'rejected' &&
+      rejectVerify.json?.application?.universityVerification?.status === 'rejected',
+  );
 }
 
 // ── Phase 7 — offers, placement & withdrawal ──
@@ -429,7 +489,11 @@ async function phase7() {
   const apply = await api('/api/applications', {
     method: 'POST',
     token: ctx.studentToken,
-    body: { internshipId: posted.json?.internship?._id, coverLetter: 'Interested in mobile.' },
+    body: {
+      internshipId: posted.json?.internship?._id,
+      coverLetter: 'Interested in mobile.',
+      universityId: ctx.universityId,
+    },
   });
   const withdraw = await api(`/api/applications/${apply.json?.application?._id}/withdraw`, {
     method: 'PATCH',

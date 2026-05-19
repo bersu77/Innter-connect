@@ -72,6 +72,7 @@ const NAV_BY_ROLE = {
   university: [
     dashboard,
     { to: '/dashboard/students', label: 'Student Verification', icon: UserCheck },
+    { to: '/dashboard/application-verification', label: 'Applications', icon: ClipboardList },
     { to: '/dashboard/placements', label: 'Placements', icon: Award },
     { to: '/dashboard/partners', label: 'Partner Companies', icon: Handshake },
     reports,
