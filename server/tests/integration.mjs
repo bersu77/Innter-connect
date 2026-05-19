@@ -767,6 +767,44 @@ async function supervisorWorkspace() {
     headers: { Authorization: `Bearer ${ctx.universityToken}` },
   });
   check('report exports as pdf', pdf.status === 200);
+
+  // ── Supervisor reassignment ──
+  // The placement currently has Daniel; the manager hands it to the new
+  // supervisor with a 'fresh' mode, starting a clean conversation.
+  const newSupId = created.json?.supervisor?.id;
+  const newSupToken = newSupLogin.json?.token;
+  const reassign = newSupId
+    ? await api(`/api/placements/${ctx.placementId}/supervisor`, {
+        method: 'PATCH',
+        token: ctx.companyToken,
+        body: { supervisorId: newSupId, mode: 'fresh' },
+      })
+    : { status: 0, json: {} };
+  check(
+    'manager can reassign a placement supervisor',
+    reassign.status === 200 &&
+      String(reassign.json?.placement?.supervisorId) === String(newSupId),
+  );
+
+  // Tasks are placement-scoped: the reassigned supervisor sees the placement's
+  // existing tasks even though a previous supervisor assigned them.
+  const newSupTasks = await api('/api/tasks', { token: newSupToken });
+  check(
+    'a reassigned supervisor sees the placement tasks',
+    newSupTasks.status === 200 &&
+      newSupTasks.json.tasks.some(
+        (t) => String(t.placementId?._id || t.placementId) === String(ctx.placementId),
+      ),
+  );
+
+  // A 'fresh' reassignment hides the previous supervisor's conversation.
+  const freshThread = await api(`/api/placements/${ctx.placementId}/messages`, {
+    token: newSupToken,
+  });
+  check(
+    'a fresh reassignment starts an empty conversation',
+    freshThread.status === 200 && freshThread.json?.messages?.length === 0,
+  );
 }
 
 const phases = [

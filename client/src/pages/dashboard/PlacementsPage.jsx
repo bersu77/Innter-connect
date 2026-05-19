@@ -9,6 +9,8 @@ const tick = (done) => (done ? '✓' : '○');
 function PlacementCard({ placement: p, role, isSupervisor, supervisors, onReload }) {
   const [busy, setBusy] = useState(false);
   const [supId, setSupId] = useState('');
+  const [changing, setChanging] = useState(false);
+  const [mode, setMode] = useState('continue');
   const [error, setError] = useState('');
 
   async function run(fn) {
@@ -70,6 +72,69 @@ function PlacementCard({ placement: p, role, isSupervisor, supervisors, onReload
             >
               Assign
             </Button>
+          </div>
+        )}
+
+        {role === 'company' && !isSupervisor && p.supervisorId && !changing && (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => {
+              setChanging(true);
+              setSupId('');
+              setMode('continue');
+              setError('');
+            }}
+          >
+            Change supervisor
+          </Button>
+        )}
+
+        {role === 'company' && !isSupervisor && p.supervisorId && changing && (
+          <div className="w-full space-y-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+            <Select value={supId} onChange={(e) => setSupId(e.target.value)} className="w-56">
+              <option value="">New supervisor…</option>
+              {supervisors
+                .filter((s) => s._id !== p.supervisorId._id)
+                .map((s) => (
+                  <option key={s._id} value={s._id}>
+                    {s.firstName} {s.lastName}
+                  </option>
+                ))}
+            </Select>
+            <fieldset className="space-y-1.5 text-sm text-slate-600">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name={`mode-${p._id}`}
+                  checked={mode === 'continue'}
+                  onChange={() => setMode('continue')}
+                />
+                Continue the existing conversation
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name={`mode-${p._id}`}
+                  checked={mode === 'fresh'}
+                  onChange={() => setMode('fresh')}
+                />
+                Start a fresh conversation
+              </label>
+            </fieldset>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                loading={busy}
+                disabled={!supId}
+                onClick={() => run(() => placementApi.assignSupervisor(p._id, supId, mode))}
+              >
+                Apply
+              </Button>
+              <Button size="sm" variant="ghost" disabled={busy} onClick={() => setChanging(false)}>
+                Cancel
+              </Button>
+            </div>
           </div>
         )}
 

@@ -3,8 +3,10 @@ import client from './client';
 
 export const placementApi = {
   list: () => client.get('/placements').then((r) => r.data),
-  assignSupervisor: (id, supervisorId) =>
-    client.patch(`/placements/${id}/supervisor`, { supervisorId }).then((r) => r.data),
+  // mode is only meaningful on reassignment: 'continue' inherits the chat
+  // thread, 'fresh' starts a new conversation. Omitted on initial assignment.
+  assignSupervisor: (id, supervisorId, mode) =>
+    client.patch(`/placements/${id}/supervisor`, { supervisorId, mode }).then((r) => r.data),
   supervisors: () => client.get('/companies/supervisors').then((r) => r.data),
   submitReport: (id, file) => {
     const fd = new FormData();
