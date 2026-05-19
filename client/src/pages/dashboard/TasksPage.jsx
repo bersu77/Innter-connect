@@ -163,6 +163,128 @@ function GradeForm({ task, onGrade }) {
   );
 }
 
+const APPEAL_TONE = { pending: 'warning', upheld: 'neutral', adjusted: 'success' };
+
+// Grade appeal — the student appeals a graded task; the supervisor resolves it.
+function AppealSection({ task, isStudent, onAppeal, onResolve }) {
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const [response, setResponse] = useState('');
+  const [score, setScore] = useState(task.score ?? '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  // A grade must exist before it can be appealed (an auto-zero counts as a grade).
+  if (!task.gradedAt) return null;
+  const appeal = task.gradeAppeal?.submittedAt ? task.gradeAppeal : null;
+
+  async function run(fn) {
+    setBusy(true);
+    setError('');
+    try {
+      await fn();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Action failed.');
+      setBusy(false);
+    }
+  }
+
+  if (appeal) {
+    return (
+      <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-amber-800">Grade appeal</span>
+          <Badge tone={APPEAL_TONE[appeal.status]}>{appeal.status}</Badge>
+        </div>
+        <p className="mt-1 whitespace-pre-line text-amber-800/80">“{appeal.reason}”</p>
+        {appeal.response && (
+          <p className="mt-1.5 border-t border-amber-200 pt-1.5 text-slate-600">
+            <span className="font-medium text-slate-700">Supervisor: </span>
+            {appeal.response}
+          </p>
+        )}
+        {!isStudent && appeal.status === 'pending' && (
+          <div className="mt-2 space-y-2 border-t border-amber-200 pt-2">
+            <Textarea
+              label="Response to the student"
+              rows={2}
+              value={response}
+              onChange={(e) => setResponse(e.target.value)}
+              placeholder="Explain your decision…"
+            />
+            <div className="flex items-end gap-2">
+              <Input
+                label={`Adjust score (0–${task.maxScore ?? 100})`}
+                type="number"
+                min="0"
+                max={task.maxScore ?? 100}
+                value={score}
+                onChange={(e) => setScore(e.target.value)}
+                className="w-40"
+              />
+              <Button
+                size="sm"
+                loading={busy}
+                onClick={() => {
+                  if (!response.trim()) {
+                    setError('Please write a response.');
+                    return;
+                  }
+                  run(() => onResolve(task._id, { response, score }));
+                }}
+              >
+                Resolve appeal
+              </Button>
+            </div>
+            {error && <p className="text-xs text-red-500">{error}</p>}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (!isStudent) return null;
+
+  return (
+    <div className="mt-3">
+      {open ? (
+        <div className="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <Textarea
+            label="Why are you appealing this grade?"
+            rows={2}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Explain what you'd like the supervisor to reconsider…"
+          />
+          {error && <p className="text-xs text-red-500">{error}</p>}
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              loading={busy}
+              onClick={() => {
+                if (!reason.trim()) {
+                  setError('Please explain why you are appealing.');
+                  return;
+                }
+                run(() => onAppeal(task._id, reason));
+              }}
+            >
+              Submit appeal
+            </Button>
+            <Button size="sm" variant="ghost" disabled={busy} onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Button size="sm" variant="ghost" onClick={() => setOpen(true)}>
+          Appeal this grade
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export default function TasksPage() {
   const { user } = useAuth();
   const isStudent = (user?.userType ?? user?.role) === 'student';
@@ -230,6 +352,16 @@ export default function TasksPage() {
     } catch (err) {
       setError(err.response?.data?.message || 'Could not grade the task.');
     }
+  }
+
+  async function appeal(id, reason) {
+    await taskApi.appeal(id, reason);
+    await load();
+  }
+
+  async function resolveAppeal(id, data) {
+    await taskApi.resolveAppeal(id, data);
+    await load();
   }
 
   async function createTask(e) {
@@ -371,7 +503,14 @@ export default function TasksPage() {
               <Card key={task._id} className="p-5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <h3 className="font-semibold text-slate-800">{task.title}</h3>
+                    <div className="flex items-center gap-2">
+                      {task.tag && (
+                        <span className="rounded-md bg-slate-100 px-1.5 py-0.5 font-mono text-xs font-medium text-slate-500">
+                          {task.tag}
+                        </span>
+                      )}
+                      <h3 className="font-semibold text-slate-800">{task.title}</h3>
+                    </div>
                     {task.description && (
                       <p className="mt-0.5 whitespace-pre-line text-sm text-slate-500">
                         {task.description}
@@ -409,8 +548,8 @@ export default function TasksPage() {
                   </div>
                 )}
 
-                {/* Student — start + submission form */}
-                {isStudent && task.status !== 'completed' && (
+                {/* Student — start + submission form (a locked overdue task has neither) */}
+                {isStudent && !['completed', 'overdue'].includes(task.status) && (
                   <>
                     {task.status === 'assigned' && (
                       <div className="mt-3">
@@ -428,8 +567,18 @@ export default function TasksPage() {
                   </>
                 )}
 
-                {/* Supervisor — grading */}
-                {!isStudent && <GradeForm task={task} onGrade={grade} />}
+                {/* Supervisor — grading (hidden while an appeal awaits resolution) */}
+                {!isStudent && task.gradeAppeal?.status !== 'pending' && (
+                  <GradeForm task={task} onGrade={grade} />
+                )}
+
+                {/* Grade appeal — student raises it, supervisor resolves it */}
+                <AppealSection
+                  task={task}
+                  isStudent={isStudent}
+                  onAppeal={appeal}
+                  onResolve={resolveAppeal}
+                />
               </Card>
             );
           })}

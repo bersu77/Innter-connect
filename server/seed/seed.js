@@ -244,8 +244,10 @@ async function seed() {
     for (let t = 0; t < 5; t += 1) {
       const status = TASK_STATUS[t];
       const graded = status === 'completed';
+      taskCount += 1;
       await Task.create({
         placementId: placement._id, studentId: student.st._id, assignedBy: company.sup._id,
+        taskNumber: taskCount,
         title: pick(TASK_TITLES, p + t),
         description: 'Complete this task to the described standard. Graded on correctness and clarity.',
         deadline: days(3 + t * 5), status, maxScore: 100,
@@ -256,9 +258,36 @@ async function seed() {
         gradedAt: graded ? ago(1) : undefined,
         gradedBy: graded ? company.sup._id : undefined,
       });
-      taskCount += 1;
     }
   }
+
+  // Demo flavour for the first placement: an auto-zeroed overdue task and a
+  // completed task whose grade the student has appealed.
+  const demoTask = placements[0];
+  taskCount += 1;
+  await Task.create({
+    placementId: demoTask.placement._id, studentId: demoTask.student.st._id,
+    assignedBy: demoTask.company.sup._id, taskNumber: taskCount,
+    title: 'Submit the database schema diagram',
+    description: 'This task was not submitted before its deadline.',
+    deadline: ago(4), status: 'overdue', maxScore: 100,
+    score: 0, autoZeroed: true, gradedAt: ago(3),
+    feedback: 'Automatically scored 0 — the deadline passed without a completed submission.',
+  });
+  taskCount += 1;
+  await Task.create({
+    placementId: demoTask.placement._id, studentId: demoTask.student.st._id,
+    assignedBy: demoTask.company.sup._id, taskNumber: taskCount,
+    title: 'Refactor the authentication module',
+    description: 'Completed work — the student has appealed the grade.',
+    deadline: ago(8), status: 'completed', maxScore: 100,
+    completedAt: ago(9), score: 72, gradedAt: ago(7), gradedBy: demoTask.company.sup._id,
+    feedback: 'Solid effort, but several edge cases were missed.',
+    gradeAppeal: {
+      reason: 'I believe the edge cases mentioned were outside the task scope — please reconsider.',
+      status: 'pending', submittedAt: ago(2),
+    },
+  });
 
   // ── Assessments — one per placement (first 6 submitted with scores) ──
   for (let p = 0; p < placements.length; p += 1) {
