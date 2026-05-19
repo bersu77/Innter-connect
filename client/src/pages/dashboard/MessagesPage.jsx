@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { placementApi } from '../../api/placements';
 import { messageApi } from '../../api/messages';
 import { Button, Card, Input, Spinner } from '../../components/ui';
+import PageHeader from '../../components/PageHeader';
 
 export default function MessagesPage() {
   const { user } = useAuth();
@@ -101,14 +102,15 @@ export default function MessagesPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Messages</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {isStudent
+      <PageHeader
+        eyebrow="Threads"
+        title="Messages"
+        lede={
+          isStudent
             ? 'Chat with the supervisor assigned to your internship.'
-            : 'Chat with the interns you supervise.'}
-        </p>
-      </div>
+            : 'Chat with the interns you supervise.'
+        }
+      />
 
       {threads.length === 0 ? (
         <Card className="p-10 text-center text-sm text-slate-400">

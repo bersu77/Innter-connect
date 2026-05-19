@@ -6,9 +6,9 @@ import { Button, Card, Input } from '../components/ui';
 import Logo from '../components/Logo';
 
 const TABS = [
-  { id: 'student', label: 'Student' },
+  { id: 'student',    label: 'Student' },
   { id: 'university', label: 'University' },
-  { id: 'company', label: 'Company' },
+  { id: 'company',    label: 'Company' },
 ];
 
 export default function RegisterPage() {
@@ -33,7 +33,10 @@ export default function RegisterPage() {
       setError('Please enter your first and last name.');
       return;
     }
-    if (userType === 'student' && !/@[^@\s]+\.(edu|edu\.[a-z]{2}|ac\.[a-z]{2})$/i.test(email.trim())) {
+    if (
+      userType === 'student' &&
+      !/@[^@\s]+\.(edu|edu\.[a-z]{2}|ac\.[a-z]{2})$/i.test(email.trim())
+    ) {
       setError(
         'Students must use an academic institutional email (e.g. a .edu or .edu.et university address) — personal email accounts are not accepted.',
       );
@@ -66,43 +69,86 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">
+    <div
+      className="flex min-h-screen items-center justify-center px-4 py-12"
+      style={{ background: 'var(--bg-paper)' }}
+    >
       <div className="w-full max-w-md">
-        <div className="mb-6 flex justify-center">
-          <Link to="/">
-            <Logo />
-          </Link>
+        <div className="mb-8 flex justify-center">
+          <Link to="/"><Logo /></Link>
         </div>
-        <Card className="p-7 sm:p-8">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Create your account</h1>
-          <p className="mt-1 text-sm text-slate-500">Join InternConnect to get started.</p>
+        <Card style={{ padding: 32 }}>
+          <span className="t-eyebrow">Create your account</span>
+          <h1
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 36,
+              lineHeight: 1.05,
+              letterSpacing: '-0.018em',
+              margin: '6px 0 0',
+              fontWeight: 400,
+            }}
+          >
+            Begin your{' '}
+            <span style={{ fontStyle: 'italic', color: 'var(--brand-500)' }}>career</span>.
+          </h1>
+          <p className="t-body-md" style={{ color: 'var(--text-secondary)', marginTop: 6 }}>
+            Pick the workspace that fits you.
+          </p>
 
-          {/* Role tabs */}
-          <div className="mt-5 grid grid-cols-3 gap-1 rounded-xl bg-slate-100 p-1">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setUserType(tab.id)}
-                className={[
-                  'rounded-lg py-2 text-sm font-medium transition-all duration-200',
-                  userType === tab.id
-                    ? 'bg-white text-brand-700 shadow-soft'
-                    : 'text-slate-500 hover:text-slate-700',
-                ].join(' ')}
-              >
-                {tab.label}
-              </button>
-            ))}
+          {/* Role segmented control */}
+          <div
+            className="mt-5 grid grid-cols-3"
+            style={{
+              gap: 4,
+              padding: 4,
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--bg-subtle)',
+            }}
+          >
+            {TABS.map((tab) => {
+              const active = userType === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setUserType(tab.id)}
+                  className="t-ui-sm"
+                  style={{
+                    height: 34,
+                    border: 0,
+                    borderRadius: 'var(--radius-sm)',
+                    cursor: 'pointer',
+                    fontWeight: 500,
+                    background: active ? 'var(--bg-raised)' : 'transparent',
+                    color: active ? 'var(--brand-700)' : 'var(--text-secondary)',
+                    boxShadow: active ? 'var(--shadow-1)' : 'none',
+                    transition: 'background-color var(--dur-fast) var(--ease-emphasis), color var(--dur-fast) var(--ease-emphasis)',
+                  }}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
 
           {error && (
-            <div className="mt-4 rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
+            <div
+              className="mt-5"
+              role="alert"
+              style={{
+                background: 'var(--danger-50)',
+                color: 'var(--danger-700)',
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-md)',
+                fontSize: 13,
+              }}
+            >
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <form onSubmit={handleSubmit} className="mt-5 space-y-4">
             <Input
               label="Full name"
               required
@@ -121,7 +167,7 @@ export default function RegisterPage() {
               placeholder={userType === 'student' ? 'you@university.edu.et' : 'you@example.com'}
               hint={
                 userType === 'student'
-                  ? 'Use your academic institutional email (e.g. a .edu or .edu.et university address) — not a personal account.'
+                  ? 'Use your academic institutional email (e.g. a .edu or .edu.et university address).'
                   : undefined
               }
             />
@@ -138,8 +184,8 @@ export default function RegisterPage() {
                 <button
                   type="button"
                   onClick={() => setShowPw((v) => !v)}
-                  className="text-slate-400 transition-colors hover:text-slate-600"
                   aria-label={showPw ? 'Hide password' : 'Show password'}
+                  style={{ background: 'transparent', border: 0, color: 'inherit', cursor: 'pointer' }}
                 >
                   {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -155,13 +201,16 @@ export default function RegisterPage() {
               placeholder="Re-enter your password"
             />
             <Button type="submit" loading={loading} className="w-full">
-              Create account
+              {loading ? 'Creating account…' : 'Create account'}
             </Button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-slate-500">
+          <p className="mt-7 text-center t-body-sm" style={{ color: 'var(--text-secondary)' }}>
             Already have an account?{' '}
-            <Link to="/login" className="font-semibold text-brand-600 hover:text-brand-700">
+            <Link
+              to="/login"
+              style={{ color: 'var(--brand-600)', borderBottom: 'none', fontWeight: 500 }}
+            >
               Log in
             </Link>
           </p>

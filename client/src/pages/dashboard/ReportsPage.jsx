@@ -3,6 +3,7 @@ import { Download, FileBarChart } from 'lucide-react';
 import { reportApi } from '../../api/reports';
 import { Button, Card, Spinner } from '../../components/ui';
 import FilterBar from '../../components/FilterBar';
+import PageHeader from '../../components/PageHeader';
 
 // Charts pull in the recharts library — load it on demand so it never weighs
 // down the rest of the app, which has no charts.
@@ -74,18 +75,20 @@ export default function ReportsPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Reports & analytics</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Generate placement, recruitment, and system reports.
-          </p>
-        </div>
-        <Button loading={generating} onClick={generate}>
-          <FileBarChart className="h-4 w-4" />
-          Generate report
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="Reports"
+        title="Reports & analytics"
+        lede="Generate placement, recruitment, and system reports."
+        actions={
+          <Button
+            loading={generating}
+            onClick={generate}
+            leading={<FileBarChart className="h-4 w-4" />}
+          >
+            Generate report
+          </Button>
+        }
+      />
 
       {error && (
         <div className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700">{error}</div>
