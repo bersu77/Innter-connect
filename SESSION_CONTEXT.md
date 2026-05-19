@@ -1,8 +1,8 @@
 # Session Context — InternConnect
 
 > **Handoff snapshot** — last updated 2026-05-19.
-> Phases 0–13 are complete. **Thirteen** post-phase feature rounds are merged to
-> `staging`, including **appeal documents** (most recent). There is no
+> Phases 0–13 are complete. **Fourteen** post-phase feature rounds are merged to
+> `staging`, including **CV required** (most recent). There is no
 > work in progress — a new session can start a fresh feature off `staging`.
 
 ## Project
@@ -132,6 +132,14 @@ dashboards; reporting & analytics; audit & compliance review; NFR hardening + te
     student and the supervisor. (A JSON appeal with no files still works — multer
     passes non-multipart requests through.)
 
+14. **CV required** (branch `feat/cv-required`) — uploading a CV is now a required
+    step to complete a student profile. `profileComplete` includes `cv.path` (via a
+    shared `isProfileComplete` helper, recomputed both on profile save and on CV
+    upload). The CV section of StudentProfileForm is marked required with a clear
+    prompt when missing; seeded students get a CV so demo profiles stay complete.
+    (Applying is not separately gated — the requirement is at profile completion,
+    matching the request.)
+
 **Verification baseline:** integration suite `server/tests/integration.mjs` is at
 **119/119 passing**; the seed runs `Task.syncIndexes()` to drop the old
 global-unique `taskNumber` index; `npm run build` passes (charts are a separate
@@ -141,12 +149,12 @@ server (clears the in-memory counter) before re-running, or logins start returni
 
 ## Git state & workflow
 
-- Current branch: **`staging`** — all thirteen feature rounds are merged; nothing in progress.
+- Current branch: **`staging`** — all fourteen feature rounds are merged; nothing in progress.
 - `staging` holds Phases 0–13 + the supervisor-workspace, task-deliverables,
   supervisor-reassignment, task-grading-rules, task-counting-and-workspace,
   academic-student-email, invitation-message, report-charts, list-filters,
-  dark-mode, application-university-verification, messages-reports-filters and
-  appeal-documents rounds.
+  dark-mode, application-university-verification, messages-reports-filters,
+  appeal-documents and cv-required rounds.
 - `main` is frozen at the Phase 0 merge — **never merge into `main`**.
 - **Every feature has its own branch; none are ever deleted.** Feature branches merge
   into `staging` with `--no-ff`.

@@ -162,9 +162,17 @@ export default function StudentProfileForm() {
       </Card>
 
       <Card className="p-6">
-        <h2 className="text-base font-semibold">CV / Résumé</h2>
+        <h2 className="text-base font-semibold">
+          CV / Résumé <span className="text-red-500">*</span>
+        </h2>
         <p className="mt-1 text-sm text-slate-500">
-          {cv ? `Current: ${cv.filename} (version ${cv.version})` : 'No CV uploaded yet.'}
+          {cv ? (
+            `Current: ${cv.filename} (version ${cv.version})`
+          ) : (
+            <span className="font-medium text-amber-700">
+              No CV uploaded yet — a CV is required to complete your profile.
+            </span>
+          )}
         </p>
         <div className="mt-3 flex items-center gap-4">
           <label className="cursor-pointer">
