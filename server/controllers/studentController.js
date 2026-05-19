@@ -19,6 +19,11 @@ const PROFILE_FIELDS = [
   'workAuthorization',
 ];
 
+// A profile is complete once the core academic fields and a CV are in place —
+// uploading a CV is a required step in finishing the profile.
+const isProfileComplete = (p) =>
+  Boolean(p?.major && p?.universityId && p?.graduationYear && p?.cv?.path);
+
 // @route GET /api/students/me
 export const getMyProfile = async (req, res, next) => {
   try {
@@ -45,7 +50,7 @@ export const updateMyProfile = async (req, res, next) => {
       { new: true, upsert: true, setDefaultsOnInsert: true, runValidators: true },
     );
 
-    const profileComplete = Boolean(profile.major && profile.universityId && profile.graduationYear);
+    const profileComplete = isProfileComplete(profile);
     await User.findByIdAndUpdate(req.user._id, { profileComplete });
 
     await logAudit({
@@ -85,6 +90,9 @@ export const uploadCv = async (req, res, next) => {
       },
       { new: true, upsert: true, setDefaultsOnInsert: true },
     );
+
+    // Uploading the CV may complete the profile — recompute the flag.
+    await User.findByIdAndUpdate(req.user._id, { profileComplete: isProfileComplete(profile) });
 
     await logAudit({
       req,
