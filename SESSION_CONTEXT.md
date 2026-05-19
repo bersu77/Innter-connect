@@ -1,8 +1,8 @@
 # Session Context — InternConnect
 
 > **Handoff snapshot** — last updated 2026-05-19.
-> Phases 0–13 are complete. **Nine** post-phase feature rounds are merged to
-> `staging`, including **list filters** (most recent). There is no
+> Phases 0–13 are complete. **Ten** post-phase feature rounds are merged to
+> `staging`, including **light & dark mode** (most recent). There is no
 > work in progress — a new session can start a fresh feature off `staging`.
 
 ## Project
@@ -99,6 +99,14 @@ dashboards; reporting & analytics; audit & compliance review; NFR hardening + te
    prominent fields (status, type, role, major, …); dropdown options are derived
    from the data. AuditPage already had action/status filters and was left as-is.
 
+10. **Light & dark mode** (branch `feat/dark-mode`) — a theme toggle (sun/moon) in
+    the dashboard header. `lib/theme.js` follows the OS `prefers-color-scheme` on
+    first load and persists the user's choice to `localStorage`; `main.jsx` applies
+    it before first paint (no flash). Dark mode is a global palette remap in
+    `index.css`: `.dark`-prefixed selectors override the light Tailwind utilities
+    (`bg-white`, `text-slate-*`, borders, status tints), so every page is covered
+    without per-element `dark:` variants. `darkMode:'class'` set in tailwind config.
+
 **Verification baseline:** integration suite `server/tests/integration.mjs` is at
 **115/115 passing**; the seed runs `Task.syncIndexes()` to drop the old
 global-unique `taskNumber` index; `npm run build` passes (charts are a separate
@@ -108,10 +116,11 @@ server (clears the in-memory counter) before re-running, or logins start returni
 
 ## Git state & workflow
 
-- Current branch: **`staging`** — all nine feature rounds are merged; nothing in progress.
+- Current branch: **`staging`** — all ten feature rounds are merged; nothing in progress.
 - `staging` holds Phases 0–13 + the supervisor-workspace, task-deliverables,
   supervisor-reassignment, task-grading-rules, task-counting-and-workspace,
-  academic-student-email, invitation-message, report-charts and list-filters rounds.
+  academic-student-email, invitation-message, report-charts, list-filters and
+  dark-mode rounds.
 - `main` is frozen at the Phase 0 merge — **never merge into `main`**.
 - **Every feature has its own branch; none are ever deleted.** Feature branches merge
   into `staging` with `--no-ff`.
