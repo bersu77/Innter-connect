@@ -34,8 +34,10 @@ const publicUser = (user) => ({
   profileComplete: user.profileComplete,
 });
 
-// Students must use an Addis Ababa University email.
-const AAU_EMAIL = /@aau\.edu\.et$/i;
+// Students must register with an academic institutional email — a domain ending
+// in .edu, .edu.<cc> (e.g. aau.edu.et) or .ac.<cc> (e.g. ox.ac.uk). Personal /
+// consumer providers (gmail.com, yahoo.com, …) and ordinary domains are rejected.
+const ACADEMIC_EMAIL = /@[^@\s]+\.(edu|edu\.[a-z]{2}|ac\.[a-z]{2})$/i;
 
 // The name of the company/university the user belongs to, for the workspace
 // header. Cosmetic — never fails auth, so any lookup error resolves to null.
@@ -78,10 +80,11 @@ export const register = async (req, res, next) => {
         .status(403)
         .json({ success: false, message: 'Administrator accounts cannot be self-registered' });
     }
-    if (userType === 'student' && !AAU_EMAIL.test(String(email).trim())) {
+    if (userType === 'student' && !ACADEMIC_EMAIL.test(String(email).trim())) {
       return res.status(400).json({
         success: false,
-        message: 'Students must register with an Addis Ababa University email (@aau.edu.et).',
+        message:
+          'Students must register with an academic institutional email (e.g. a .edu or .edu.et university address) — personal email accounts are not accepted.',
       });
     }
 

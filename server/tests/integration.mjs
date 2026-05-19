@@ -83,14 +83,23 @@ async function phase2() {
   });
   check('duplicate email is rejected', dup.status === 400);
 
-  const nonAau = await api('/api/auth/register', {
+  const personalEmail = await api('/api/auth/register', {
     method: 'POST',
     body: {
-      firstName: 'Non', lastName: 'Aau', email: `x.${Date.now()}@gmail.com`,
+      firstName: 'Non', lastName: 'Academic', email: `x.${Date.now()}@gmail.com`,
       password: 'Password123!', userType: 'student',
     },
   });
-  check('student registration requires an @aau.edu.et email', nonAau.status === 400);
+  check('student registration rejects a personal email', personalEmail.status === 400);
+
+  const otherUni = await api('/api/auth/register', {
+    method: 'POST',
+    body: {
+      firstName: 'Other', lastName: 'Uni', email: `s.${Date.now()}@ju.edu.et`,
+      password: 'Password123!', userType: 'student',
+    },
+  });
+  check('student registration accepts any academic email', otherUni.status === 201);
 
   const adminReg = await api('/api/auth/register', {
     method: 'POST',

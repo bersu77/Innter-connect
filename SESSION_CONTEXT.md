@@ -1,9 +1,9 @@
 # Session Context — InternConnect
 
 > **Handoff snapshot** — last updated 2026-05-19.
-> Phases 0–13 are complete. **Five** post-phase feature rounds are merged to
-> `staging`, including **task counting & workspace polish** (most recent). There
-> is no work in progress — a new session can start a fresh feature off `staging`.
+> Phases 0–13 are complete. **Six** post-phase feature rounds are merged to
+> `staging`, including **academic student email** (most recent). There is no
+> work in progress — a new session can start a fresh feature off `staging`.
 
 ## Project
 
@@ -71,18 +71,25 @@ dashboards; reporting & analytics; audit & compliance review; NFR hardening + te
    notification names the supervisor. **(f) Org name in header** — auth responses
    (login/register/getMe) include `organizationName`; DashboardLayout shows it above
    the "… workspace" label.
+6. **Academic student email** (branch `feat/academic-student-email`) — broadened the
+   round-5 (d) student email rule: registration now accepts **any academic
+   institutional email** — domains ending in `.edu`, `.edu.<cc>` (e.g. `aau.edu.et`)
+   or `.ac.<cc>` (e.g. `ox.ac.uk`) — and rejects personal/consumer providers and
+   ordinary domains, instead of only `@aau.edu.et`. Regex `ACADEMIC_EMAIL` in
+   `authController` (mirrored in RegisterPage). Enforced for `userType:'student'`.
 
 **Verification baseline:** integration suite `server/tests/integration.mjs` is at
-**113/113 passing** (4 checks added; the seed runs `Task.syncIndexes()` to drop the
-old global-unique `taskNumber` index); `npm run build` passes.
+**114/114 passing**; the seed runs `Task.syncIndexes()` to drop the old
+global-unique `taskNumber` index; `npm run build` passes.
 Note: the auth limiter is 50 requests / 15 min — enough for one suite run; restart the
 server (clears the in-memory counter) before re-running, or logins start returning 429.
 
 ## Git state & workflow
 
-- Current branch: **`staging`** — all five feature rounds are merged; nothing in progress.
+- Current branch: **`staging`** — all six feature rounds are merged; nothing in progress.
 - `staging` holds Phases 0–13 + the supervisor-workspace, task-deliverables,
-  supervisor-reassignment, task-grading-rules and task-counting-and-workspace rounds.
+  supervisor-reassignment, task-grading-rules, task-counting-and-workspace and
+  academic-student-email rounds.
 - `main` is frozen at the Phase 0 merge — **never merge into `main`**.
 - **Every feature has its own branch; none are ever deleted.** Feature branches merge
   into `staging` with `--no-ff`.
