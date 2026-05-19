@@ -1,8 +1,8 @@
 # Session Context — InternConnect
 
 > **Handoff snapshot** — last updated 2026-05-19.
-> Phases 0–13 are complete. **Six** post-phase feature rounds are merged to
-> `staging`, including **academic student email** (most recent). There is no
+> Phases 0–13 are complete. **Seven** post-phase feature rounds are merged to
+> `staging`, including **invitation message** (most recent). There is no
 > work in progress — a new session can start a fresh feature off `staging`.
 
 ## Project
@@ -78,18 +78,25 @@ dashboards; reporting & analytics; audit & compliance review; NFR hardening + te
    ordinary domains, instead of only `@aau.edu.et`. Regex `ACADEMIC_EMAIL` in
    `authController` (mirrored in RegisterPage). Enforced for `userType:'student'`.
 
+7. **Invitation message** (branch `feat/invitation-message`) — the university's
+   PartnersPage "Invite" action now expands to an optional message `<Textarea>`;
+   on send it passes the note through `invitationApi.send(companyId, message)`. The
+   `Invitation.message` field, the controller and the company-side display already
+   existed — this round wires up the send form and shows the note in the university's
+   "Sent invitations" table.
+
 **Verification baseline:** integration suite `server/tests/integration.mjs` is at
-**114/114 passing**; the seed runs `Task.syncIndexes()` to drop the old
+**115/115 passing**; the seed runs `Task.syncIndexes()` to drop the old
 global-unique `taskNumber` index; `npm run build` passes.
 Note: the auth limiter is 50 requests / 15 min — enough for one suite run; restart the
 server (clears the in-memory counter) before re-running, or logins start returning 429.
 
 ## Git state & workflow
 
-- Current branch: **`staging`** — all six feature rounds are merged; nothing in progress.
+- Current branch: **`staging`** — all seven feature rounds are merged; nothing in progress.
 - `staging` holds Phases 0–13 + the supervisor-workspace, task-deliverables,
-  supervisor-reassignment, task-grading-rules, task-counting-and-workspace and
-  academic-student-email rounds.
+  supervisor-reassignment, task-grading-rules, task-counting-and-workspace,
+  academic-student-email and invitation-message rounds.
 - `main` is frozen at the Phase 0 merge — **never merge into `main`**.
 - **Every feature has its own branch; none are ever deleted.** Feature branches merge
   into `staging` with `--no-ff`.

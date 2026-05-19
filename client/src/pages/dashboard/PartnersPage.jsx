@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { companySearchApi, invitationApi } from '../../api/internships';
-import { Badge, Button, Card, Input, Spinner } from '../../components/ui';
+import { Badge, Button, Card, Input, Spinner, Textarea } from '../../components/ui';
 
 const STATUS_TONE = { sent: 'warning', accepted: 'success', declined: 'danger' };
 
@@ -11,6 +11,9 @@ export default function PartnersPage() {
   const [search, setSearch] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [message, setMessage] = useState(null);
+  // The company whose invite form is open, plus its optional message.
+  const [invitingId, setInvitingId] = useState(null);
+  const [inviteMessage, setInviteMessage] = useState('');
 
   async function load(term = '') {
     setLoading(true);
@@ -34,12 +37,20 @@ export default function PartnersPage() {
 
   const invitedIds = new Set(invitations.map((i) => String(i.companyId?._id || i.companyId)));
 
-  async function invite(companyId) {
+  function openInvite(companyId) {
+    setInvitingId(companyId);
+    setInviteMessage('');
+    setMessage(null);
+  }
+
+  async function sendInvite(companyId) {
     setBusyId(companyId);
     setMessage(null);
     try {
-      await invitationApi.send(companyId);
+      await invitationApi.send(companyId, inviteMessage.trim() || undefined);
       setMessage({ type: 'success', text: 'Invitation sent.' });
+      setInvitingId(null);
+      setInviteMessage('');
       await load(search);
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.message || 'Could not send invitation.' });
@@ -92,25 +103,44 @@ export default function PartnersPage() {
       ) : (
         <>
           <div className="grid gap-3 sm:grid-cols-2">
-            {companies.map((c) => (
-              <Card key={c._id} className="flex items-center justify-between gap-3 p-4">
-                <div>
-                  <div className="font-medium text-slate-800">{c.name}</div>
-                  <div className="text-xs text-slate-400">
-                    {[c.industry, c.city].filter(Boolean).join(' · ') || '—'}
+            {companies.map((c) => {
+              const invited = invitedIds.has(String(c._id));
+              const open = invitingId === c._id;
+              return (
+                <Card key={c._id} className="p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-medium text-slate-800">{c.name}</div>
+                      <div className="text-xs text-slate-400">
+                        {[c.industry, c.city].filter(Boolean).join(' · ') || '—'}
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={invited || open ? 'secondary' : 'primary'}
+                      disabled={invited}
+                      onClick={() => (open ? setInvitingId(null) : openInvite(c._id))}
+                    >
+                      {invited ? 'Invited' : open ? 'Cancel' : 'Invite'}
+                    </Button>
                   </div>
-                </div>
-                <Button
-                  size="sm"
-                  variant={invitedIds.has(String(c._id)) ? 'secondary' : 'primary'}
-                  disabled={invitedIds.has(String(c._id))}
-                  loading={busyId === c._id}
-                  onClick={() => invite(c._id)}
-                >
-                  {invitedIds.has(String(c._id)) ? 'Invited' : 'Invite'}
-                </Button>
-              </Card>
-            ))}
+                  {open && (
+                    <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+                      <Textarea
+                        label="Message (optional)"
+                        rows={2}
+                        value={inviteMessage}
+                        onChange={(e) => setInviteMessage(e.target.value)}
+                        placeholder="Add a note for the company — why you'd like to partner…"
+                      />
+                      <Button size="sm" loading={busyId === c._id} onClick={() => sendInvite(c._id)}>
+                        Send invitation
+                      </Button>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
             {companies.length === 0 && (
               <Card className="p-8 text-center text-sm text-slate-400 sm:col-span-2">
                 No companies found.
@@ -135,6 +165,11 @@ export default function PartnersPage() {
                       <tr key={inv._id} className="border-b border-slate-50 last:border-0">
                         <td className="px-4 py-3 font-medium text-slate-800">
                           {inv.companyId?.name || '—'}
+                          {inv.message && (
+                            <span className="mt-0.5 block text-xs font-normal text-slate-400">
+                              “{inv.message}”
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3">
                           <Badge tone={STATUS_TONE[inv.status]}>{inv.status}</Badge>
