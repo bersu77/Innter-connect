@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { Download, FileBarChart } from 'lucide-react';
 import { reportApi } from '../../api/reports';
 import { Button, Card, Spinner } from '../../components/ui';
+import FilterBar from '../../components/FilterBar';
 
 // Charts pull in the recharts library — load it on demand so it never weighs
 // down the rest of the app, which has no charts.
@@ -16,6 +17,8 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState({});
 
   async function loadList() {
     try {
@@ -60,6 +63,15 @@ export default function ReportsPage() {
   const rows = selected?.payload?.rows || [];
   const columns = rows.length > 0 ? Object.keys(rows[0]) : [];
 
+  // Filter the saved-reports list by title and type.
+  const typeOptions = [...new Set(reports.map((r) => r.type).filter(Boolean))].sort();
+  const query = search.trim().toLowerCase();
+  const visibleReports = reports.filter((r) => {
+    if (filters.type && r.type !== filters.type) return false;
+    if (!query) return true;
+    return (r.title || '').toLowerCase().includes(query);
+  });
+
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -86,24 +98,39 @@ export default function ReportsPage() {
       ) : (
         <>
           {reports.length > 0 && (
-            <Card className="overflow-hidden">
-              <div className="divide-y divide-slate-50">
-                {reports.map((r) => (
-                  <button
-                    key={r._id}
-                    onClick={() => open(r._id)}
-                    className={`flex w-full items-center justify-between px-4 py-3 text-left text-sm transition-colors hover:bg-slate-50 ${
-                      selected?._id === r._id ? 'bg-brand-50/50' : ''
-                    }`}
-                  >
-                    <span className="font-medium text-slate-800">{r.title}</span>
-                    <span className="text-xs text-slate-400">
-                      {new Date(r.generatedAt).toLocaleString()}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </Card>
+            <div className="space-y-3">
+              <FilterBar
+                search={search}
+                onSearch={setSearch}
+                searchPlaceholder="Search reports by title…"
+                filters={[{ key: 'type', label: 'Types', options: typeOptions }]}
+                values={filters}
+                onChange={(k, v) => setFilters((f) => ({ ...f, [k]: v }))}
+              />
+              <Card className="overflow-hidden">
+                <div className="divide-y divide-slate-50">
+                  {visibleReports.map((r) => (
+                    <button
+                      key={r._id}
+                      onClick={() => open(r._id)}
+                      className={`flex w-full items-center justify-between px-4 py-3 text-left text-sm transition-colors hover:bg-slate-50 ${
+                        selected?._id === r._id ? 'bg-brand-50/50' : ''
+                      }`}
+                    >
+                      <span className="font-medium text-slate-800">{r.title}</span>
+                      <span className="text-xs text-slate-400">
+                        {new Date(r.generatedAt).toLocaleString()}
+                      </span>
+                    </button>
+                  ))}
+                  {visibleReports.length === 0 && (
+                    <p className="px-4 py-8 text-center text-sm text-slate-400">
+                      No reports match your filters.
+                    </p>
+                  )}
+                </div>
+              </Card>
+            </div>
           )}
 
           {selected && (

@@ -1,9 +1,9 @@
 # Session Context — InternConnect
 
 > **Handoff snapshot** — last updated 2026-05-19.
-> Phases 0–13 are complete. **Eleven** post-phase feature rounds are merged to
-> `staging`, including **application university verification** (most recent). There
-> is no work in progress — a new session can start a fresh feature off `staging`.
+> Phases 0–13 are complete. **Twelve** post-phase feature rounds are merged to
+> `staging`, including **messages & reports filters** (most recent). There is no
+> work in progress — a new session can start a fresh feature off `staging`.
 
 ## Project
 
@@ -120,6 +120,11 @@ dashboards; reporting & analytics; audit & compliance review; NFR hardening + te
     branch; the company's ApplicationsPage shows "Awaiting university verification"
     until it clears.
 
+12. **Messages & reports filters** (branch `feat/messages-reports-filters`) — completes
+    the round-9 filter coverage on the two searchable lists it missed: a conversation
+    search on the Messages thread list, and a title search + `type` filter on the
+    Reports list (`FilterBar`). Every searchable list in the dashboard now has a filter.
+
 **Verification baseline:** integration suite `server/tests/integration.mjs` is at
 **119/119 passing**; the seed runs `Task.syncIndexes()` to drop the old
 global-unique `taskNumber` index; `npm run build` passes (charts are a separate
@@ -129,11 +134,11 @@ server (clears the in-memory counter) before re-running, or logins start returni
 
 ## Git state & workflow
 
-- Current branch: **`staging`** — all eleven feature rounds are merged; nothing in progress.
+- Current branch: **`staging`** — all twelve feature rounds are merged; nothing in progress.
 - `staging` holds Phases 0–13 + the supervisor-workspace, task-deliverables,
   supervisor-reassignment, task-grading-rules, task-counting-and-workspace,
   academic-student-email, invitation-message, report-charts, list-filters,
-  dark-mode and application-university-verification rounds.
+  dark-mode, application-university-verification and messages-reports-filters rounds.
 - `main` is frozen at the Phase 0 merge — **never merge into `main`**.
 - **Every feature has its own branch; none are ever deleted.** Feature branches merge
   into `staging` with `--no-ff`.

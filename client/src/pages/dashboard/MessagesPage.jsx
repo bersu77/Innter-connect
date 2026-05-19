@@ -15,6 +15,7 @@ export default function MessagesPage() {
   const [loading, setLoading] = useState(true);
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
+  const [threadSearch, setThreadSearch] = useState('');
   const endRef = useRef(null);
 
   useEffect(() => {
@@ -80,6 +81,16 @@ export default function MessagesPage() {
     }
   }
 
+  // Filter the conversation list by the other party's name or internship.
+  const threadQuery = threadSearch.trim().toLowerCase();
+  const visibleThreads = threadQuery
+    ? threads.filter((p) =>
+        `${counterpart(p).name} ${p.internshipId?.title || ''}`
+          .toLowerCase()
+          .includes(threadQuery),
+      )
+    : threads;
+
   if (loading) {
     return (
       <div className="flex justify-center py-20">
@@ -106,7 +117,19 @@ export default function MessagesPage() {
       ) : (
         <div className="grid gap-4 md:grid-cols-3">
           <Card className="overflow-hidden md:col-span-1">
-            {threads.map((p) => {
+            <div className="border-b border-slate-100 p-2">
+              <Input
+                value={threadSearch}
+                onChange={(e) => setThreadSearch(e.target.value)}
+                placeholder="Search conversations…"
+              />
+            </div>
+            {visibleThreads.length === 0 && (
+              <p className="px-4 py-8 text-center text-xs text-slate-400">
+                No conversations match.
+              </p>
+            )}
+            {visibleThreads.map((p) => {
               const c = counterpart(p);
               return (
                 <button
