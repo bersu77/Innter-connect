@@ -50,6 +50,14 @@ const taskSchema = new mongoose.Schema(
       reason: String,
       status: { type: String, enum: ['pending', 'upheld', 'adjusted'] },
       submittedAt: Date,
+      // Optional supporting documents the student attaches to the appeal.
+      documents: [
+        {
+          filename: String,
+          path: String,
+          uploadedAt: { type: Date, default: Date.now },
+        },
+      ],
       response: String,
       resolvedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
       resolvedAt: Date,
