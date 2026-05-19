@@ -1,4 +1,5 @@
 import User from '../models/User.js';
+import { Company, University, Student } from '../models/index.js';
 import { logAudit } from '../services/audit.js';
 import {
   generateAccessToken,
@@ -33,6 +34,36 @@ const publicUser = (user) => ({
   profileComplete: user.profileComplete,
 });
 
+// Students must use an Addis Ababa University email.
+const AAU_EMAIL = /@aau\.edu\.et$/i;
+
+// The name of the company/university the user belongs to, for the workspace
+// header. Cosmetic — never fails auth, so any lookup error resolves to null.
+async function organizationName(user) {
+  try {
+    if (user.userType === 'company') {
+      const company = user.companyId
+        ? await Company.findById(user.companyId).select('name')
+        : await Company.findOne({ userId: user._id }).select('name');
+      return company?.name || null;
+    }
+    if (user.userType === 'university') {
+      const uni = await University.findOne({ userId: user._id }).select('name');
+      return uni?.name || null;
+    }
+    if (user.userType === 'student') {
+      const student = await Student.findOne({ userId: user._id }).select('universityId');
+      const uni = student?.universityId
+        ? await University.findById(student.universityId).select('name')
+        : null;
+      return uni?.name || null;
+    }
+  } catch {
+    /* organization name is cosmetic — never break auth over it */
+  }
+  return null;
+}
+
 // @route POST /api/auth/register
 export const register = async (req, res, next) => {
   try {
@@ -46,6 +77,12 @@ export const register = async (req, res, next) => {
       return res
         .status(403)
         .json({ success: false, message: 'Administrator accounts cannot be self-registered' });
+    }
+    if (userType === 'student' && !AAU_EMAIL.test(String(email).trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Students must register with an Addis Ababa University email (@aau.edu.et).',
+      });
     }
 
     const existing = await User.findOne({ email });
@@ -63,7 +100,11 @@ export const register = async (req, res, next) => {
     await logAudit({ req, user, action: 'USER_REGISTER', entityType: 'User', entityId: user._id });
 
     sendRefreshCookie(res, refreshToken);
-    res.status(201).json({ success: true, token: accessToken, user: publicUser(user) });
+    res.status(201).json({
+      success: true,
+      token: accessToken,
+      user: { ...publicUser(user), organizationName: await organizationName(user) },
+    });
   } catch (err) {
     next(err);
   }
@@ -147,7 +188,11 @@ export const login = async (req, res, next) => {
     await logAudit({ req, user, action: 'USER_LOGIN', entityType: 'User', entityId: user._id });
 
     sendRefreshCookie(res, refreshToken);
-    res.json({ success: true, token: accessToken, user: publicUser(user) });
+    res.json({
+      success: true,
+      token: accessToken,
+      user: { ...publicUser(user), organizationName: await organizationName(user) },
+    });
   } catch (err) {
     next(err);
   }
@@ -197,7 +242,11 @@ export const logout = async (req, res) => {
 
 // @route GET /api/auth/me
 export const getMe = async (req, res) => {
-  res.json({ success: true, user: req.user });
+  const user = req.user.toObject ? req.user.toObject() : req.user;
+  res.json({
+    success: true,
+    user: { ...user, organizationName: await organizationName(req.user) },
+  });
 };
 
 // @route POST /api/auth/forgot-password

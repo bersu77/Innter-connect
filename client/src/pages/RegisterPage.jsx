@@ -33,6 +33,10 @@ export default function RegisterPage() {
       setError('Please enter your first and last name.');
       return;
     }
+    if (userType === 'student' && !/@aau\.edu\.et$/i.test(email.trim())) {
+      setError('Students must use an Addis Ababa University email (@aau.edu.et).');
+      return;
+    }
     if (password.length < 8) {
       setError('Password must be at least 8 characters.');
       return;
@@ -112,7 +116,12 @@ export default function RegisterPage() {
               icon={Mail}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              placeholder={userType === 'student' ? 'you@aau.edu.et' : 'you@example.com'}
+              hint={
+                userType === 'student'
+                  ? 'Students must use their Addis Ababa University email (@aau.edu.et).'
+                  : undefined
+              }
             />
             <Input
               label="Password"

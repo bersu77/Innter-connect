@@ -1,9 +1,9 @@
 # Session Context — InternConnect
 
 > **Handoff snapshot** — last updated 2026-05-19.
-> Phases 0–13 are complete. **Four** post-phase feature rounds are merged to
-> `staging`, including **task grading rules** (most recent). There is no
-> work in progress — a new session can start a fresh feature off `staging`.
+> Phases 0–13 are complete. **Five** post-phase feature rounds are merged to
+> `staging`, including **task counting & workspace polish** (most recent). There
+> is no work in progress — a new session can start a fresh feature off `staging`.
 
 ## Project
 
@@ -57,16 +57,32 @@ dashboards; reporting & analytics; audit & compliance review; NFR hardening + te
    as a `TSK-0042` tag (Mongoose virtual); never editable. TasksPage shows the tag and
    the appeal UI for both roles.
 
+5. **Task counting & workspace polish** (branch `feat/task-counting-and-workspace`) —
+   six related changes. **(a) Per-student task numbering** — `Task.taskNumber` now
+   counts from 1 *per student* (compound unique index `{studentId, taskNumber}`), so
+   the same task is one student's 3rd and another's 10th; the `TSK-0042` tag is
+   unchanged in format. **(b) Bulk assign** — `createTask` accepts `assignToAll` to
+   assign one task to every active intern at once (one Task doc per student, each
+   numbered in its own sequence); returns `{ task, tasks }`. **(c) Task search** —
+   client-side filter on the Tasks page (tag/title/status/name), per role. **(d)
+   Student email rule** — registration requires an `@aau.edu.et` address for
+   `userType:'student'` (server + RegisterPage). **(e) Assigner shown** — `listTasks`
+   populates `assignedBy`; the student's task card shows "Assigned by {name}" and the
+   notification names the supervisor. **(f) Org name in header** — auth responses
+   (login/register/getMe) include `organizationName`; DashboardLayout shows it above
+   the "… workspace" label.
+
 **Verification baseline:** integration suite `server/tests/integration.mjs` is at
-**109/109 passing** (8 task-grading checks added); `npm run build` passes.
+**113/113 passing** (4 checks added; the seed runs `Task.syncIndexes()` to drop the
+old global-unique `taskNumber` index); `npm run build` passes.
 Note: the auth limiter is 50 requests / 15 min — enough for one suite run; restart the
 server (clears the in-memory counter) before re-running, or logins start returning 429.
 
 ## Git state & workflow
 
-- Current branch: **`staging`** — all four feature rounds are merged; nothing in progress.
+- Current branch: **`staging`** — all five feature rounds are merged; nothing in progress.
 - `staging` holds Phases 0–13 + the supervisor-workspace, task-deliverables,
-  supervisor-reassignment and task-grading-rules rounds.
+  supervisor-reassignment, task-grading-rules and task-counting-and-workspace rounds.
 - `main` is frozen at the Phase 0 merge — **never merge into `main`**.
 - **Every feature has its own branch; none are ever deleted.** Feature branches merge
   into `staging` with `--no-ff`.

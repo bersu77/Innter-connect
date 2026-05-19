@@ -294,8 +294,10 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
   const [form, setForm] = useState({
     placementId: '',
+    assignToAll: false,
     title: '',
     description: '',
     deadline: '',
@@ -367,8 +369,8 @@ export default function TasksPage() {
   async function createTask(e) {
     e.preventDefault();
     setError('');
-    if (!form.placementId || !form.title) {
-      setError('Placement and title are required.');
+    if (!form.title || (!form.assignToAll && !form.placementId)) {
+      setError('A title and a placement (or "assign to all my interns") are required.');
       return;
     }
     setCreating(true);
@@ -380,6 +382,7 @@ export default function TasksPage() {
       });
       setForm({
         placementId: '',
+        assignToAll: false,
         title: '',
         description: '',
         deadline: '',
@@ -395,6 +398,25 @@ export default function TasksPage() {
       setCreating(false);
     }
   }
+
+  // Per-role search — each role already sees only its own tasks; this filters
+  // within that by tag, title, description, status, or the other party's name.
+  const query = search.trim().toLowerCase();
+  const visibleTasks = query
+    ? tasks.filter((t) => {
+        const supervisor = t.assignedBy
+          ? `${t.assignedBy.firstName} ${t.assignedBy.lastName}`
+          : '';
+        const student = t.studentId?.userId
+          ? `${t.studentId.userId.firstName} ${t.studentId.userId.lastName}`
+          : '';
+        return [t.tag, t.title, t.description, t.status, supervisor, student]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+          .includes(query);
+      })
+    : tasks;
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
   const toggle = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.checked }));
@@ -418,22 +440,39 @@ export default function TasksPage() {
         <Card className="p-6">
           <h2 className="text-base font-semibold">Assign a new task</h2>
           <form onSubmit={createTask} className="mt-3 grid gap-4 sm:grid-cols-2">
-            <Select
-              className="sm:col-span-2"
-              label="Placement"
-              value={form.placementId}
-              onChange={set('placementId')}
-            >
-              <option value="">Select a placement you supervise</option>
-              {placements.map((p) => (
-                <option key={p._id} value={p._id}>
-                  {p.internshipId?.title || 'Internship'} —{' '}
-                  {p.studentId?.userId
-                    ? `${p.studentId.userId.firstName} ${p.studentId.userId.lastName}`
-                    : 'student'}
-                </option>
-              ))}
-            </Select>
+            <div className="sm:col-span-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={form.assignToAll}
+                  onChange={toggle('assignToAll')}
+                  className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                />
+                Assign to all my current interns
+              </label>
+              {form.assignToAll ? (
+                <p className="mt-1.5 text-xs text-slate-400">
+                  Every active intern gets their own copy, numbered in their own sequence.
+                </p>
+              ) : (
+                <Select
+                  className="mt-2"
+                  label="Placement"
+                  value={form.placementId}
+                  onChange={set('placementId')}
+                >
+                  <option value="">Select a placement you supervise</option>
+                  {placements.map((p) => (
+                    <option key={p._id} value={p._id}>
+                      {p.internshipId?.title || 'Internship'} —{' '}
+                      {p.studentId?.userId
+                        ? `${p.studentId.userId.firstName} ${p.studentId.userId.lastName}`
+                        : 'student'}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </div>
             <Input
               className="sm:col-span-2"
               label="Title"
@@ -497,7 +536,17 @@ export default function TasksPage() {
         <Card className="p-10 text-center text-sm text-slate-400">No tasks yet.</Card>
       ) : (
         <div className="space-y-3">
-          {tasks.map((task) => {
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search tasks by tag, title, status or name…"
+          />
+          {visibleTasks.length === 0 && (
+            <Card className="p-10 text-center text-sm text-slate-400">
+              No tasks match “{search}”.
+            </Card>
+          )}
+          {visibleTasks.map((task) => {
             const reqList = requiredList(task);
             return (
               <Card key={task._id} className="p-5">
@@ -519,6 +568,11 @@ export default function TasksPage() {
                     {!isStudent && task.studentId?.userId && (
                       <p className="mt-0.5 text-xs text-slate-400">
                         {task.studentId.userId.firstName} {task.studentId.userId.lastName}
+                      </p>
+                    )}
+                    {isStudent && task.assignedBy && (
+                      <p className="mt-0.5 text-xs text-slate-400">
+                        Assigned by {task.assignedBy.firstName} {task.assignedBy.lastName}
                       </p>
                     )}
                   </div>

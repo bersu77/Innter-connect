@@ -6,10 +6,11 @@ const taskSchema = new mongoose.Schema(
     placementId: { type: mongoose.Schema.Types.ObjectId, ref: 'Placement', required: true },
     studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true },
     assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    // Unique sequential identifier, set by the server on creation — never editable.
-    // Surfaced as a "TSK-0042" tag via the `tag` virtual below. Sparse so the
-    // unique index tolerates any legacy task created before this field existed.
-    taskNumber: { type: Number, unique: true, sparse: true },
+    // Per-student sequential identifier, set by the server on creation — never
+    // editable. Counts from 1 upward within each student's own task list, so the
+    // same task assigned to several students is numbered differently for each.
+    // Surfaced as a "TSK-0042" tag via the `tag` virtual below.
+    taskNumber: { type: Number },
     title: { type: String, required: true, trim: true },
     description: String,
     deadline: Date,
@@ -64,5 +65,7 @@ taskSchema.virtual('tag').get(function () {
 
 taskSchema.index({ placementId: 1 });
 taskSchema.index({ studentId: 1, status: 1 });
+// taskNumber is unique within a student's list, not globally.
+taskSchema.index({ studentId: 1, taskNumber: 1 }, { unique: true });
 
 export default mongoose.model('Task', taskSchema);
