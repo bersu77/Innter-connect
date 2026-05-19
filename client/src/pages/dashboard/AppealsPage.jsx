@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { verificationApi } from '../../api/verification';
 import { Badge, Button, Card, Spinner, Textarea } from '../../components/ui';
+import FilterBar from '../../components/FilterBar';
 
 const V_TONE = { approved: 'success', rejected: 'danger', pending: 'warning' };
 const A_TONE = { pending: 'warning', upheld: 'danger', overturned: 'success' };
@@ -12,6 +13,21 @@ function AdminAppeals() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState({});
+
+  const statusOptions = [...new Set(appeals.map((a) => a.status).filter(Boolean))].sort();
+  const typeOptions = [
+    ...new Set(appeals.map((a) => a.verificationId?.entityType).filter(Boolean)),
+  ].sort();
+  const query = search.trim().toLowerCase();
+  const visible = appeals.filter((a) => {
+    if (filters.status && a.status !== filters.status) return false;
+    if (filters.type && a.verificationId?.entityType !== filters.type) return false;
+    if (!query) return true;
+    const name = a.submittedBy ? `${a.submittedBy.firstName} ${a.submittedBy.lastName}` : '';
+    return [name, a.reason].filter(Boolean).join(' ').toLowerCase().includes(query);
+  });
 
   async function load() {
     setLoading(true);
@@ -52,11 +68,28 @@ function AdminAppeals() {
   return (
     <>
       {error && <div className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700">{error}</div>}
+      {appeals.length > 0 && (
+        <FilterBar
+          search={search}
+          onSearch={setSearch}
+          searchPlaceholder="Search appeals by name or reason…"
+          filters={[
+            { key: 'status', label: 'Statuses', options: statusOptions },
+            { key: 'type', label: 'Types', options: typeOptions },
+          ]}
+          values={filters}
+          onChange={(k, v) => setFilters((f) => ({ ...f, [k]: v }))}
+        />
+      )}
       {appeals.length === 0 ? (
         <Card className="p-10 text-center text-sm text-slate-400">No appeals submitted.</Card>
+      ) : visible.length === 0 ? (
+        <Card className="p-10 text-center text-sm text-slate-400">
+          No appeals match your filters.
+        </Card>
       ) : (
         <div className="space-y-3">
-          {appeals.map((a) => (
+          {visible.map((a) => (
             <Card key={a._id} className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>

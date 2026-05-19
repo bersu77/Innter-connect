@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { companyApi } from '../../api/profile';
 import { Button, Card, Input, Spinner } from '../../components/ui';
+import FilterBar from '../../components/FilterBar';
 
 export default function SupervisorsPage() {
   const [supervisors, setSupervisors] = useState([]);
@@ -8,6 +9,18 @@ export default function SupervisorsPage() {
   const [form, setForm] = useState({ firstName: '', lastName: '', username: '', password: '' });
   const [creating, setCreating] = useState(false);
   const [message, setMessage] = useState(null);
+  const [search, setSearch] = useState('');
+
+  const query = search.trim().toLowerCase();
+  const visible = query
+    ? supervisors.filter((s) =>
+        [s.firstName, s.lastName, s.username]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+          .includes(query),
+      )
+    : supervisors;
 
   async function load() {
     try {
@@ -84,6 +97,14 @@ export default function SupervisorsPage() {
         </form>
       </Card>
 
+      {!loading && supervisors.length > 0 && (
+        <FilterBar
+          search={search}
+          onSearch={setSearch}
+          searchPlaceholder="Search supervisors by name or username…"
+        />
+      )}
+
       <Card className="overflow-hidden">
         <div className="border-b border-slate-100 px-4 py-3 text-sm font-semibold text-slate-800">
           Your supervisors
@@ -103,7 +124,7 @@ export default function SupervisorsPage() {
               </tr>
             </thead>
             <tbody>
-              {supervisors.map((s) => (
+              {visible.map((s) => (
                 <tr key={s._id} className="border-b border-slate-50 last:border-0">
                   <td className="px-4 py-3 font-medium text-slate-800">
                     {s.firstName} {s.lastName}
@@ -111,6 +132,13 @@ export default function SupervisorsPage() {
                   <td className="px-4 py-3 text-slate-600">{s.username || '—'}</td>
                 </tr>
               ))}
+              {visible.length === 0 && (
+                <tr>
+                  <td colSpan={2} className="px-4 py-10 text-center text-sm text-slate-400">
+                    No supervisors match your search.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         )}

@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { taskApi } from '../../api/tasks';
 import { placementApi } from '../../api/placements';
 import { Badge, Button, Card, Input, Select, Spinner, Textarea } from '../../components/ui';
+import FilterBar from '../../components/FilterBar';
 
 const TONE = { assigned: 'neutral', in_progress: 'brand', completed: 'success', overdue: 'danger' };
 const label = (s) => (s || '').replace(/_/g, ' ');
@@ -295,6 +296,7 @@ export default function TasksPage() {
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState({});
   const [form, setForm] = useState({
     placementId: '',
     assignToAll: false,
@@ -399,24 +401,23 @@ export default function TasksPage() {
     }
   }
 
-  // Per-role search — each role already sees only its own tasks; this filters
-  // within that by tag, title, description, status, or the other party's name.
+  // Per-role search + status filter — each role already sees only its own
+  // tasks; this filters within that by text and by task status.
   const query = search.trim().toLowerCase();
-  const visibleTasks = query
-    ? tasks.filter((t) => {
-        const supervisor = t.assignedBy
-          ? `${t.assignedBy.firstName} ${t.assignedBy.lastName}`
-          : '';
-        const student = t.studentId?.userId
-          ? `${t.studentId.userId.firstName} ${t.studentId.userId.lastName}`
-          : '';
-        return [t.tag, t.title, t.description, t.status, supervisor, student]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase()
-          .includes(query);
-      })
-    : tasks;
+  const statusOptions = [...new Set(tasks.map((t) => t.status).filter(Boolean))].sort();
+  const visibleTasks = tasks.filter((t) => {
+    if (filters.status && t.status !== filters.status) return false;
+    if (!query) return true;
+    const supervisor = t.assignedBy ? `${t.assignedBy.firstName} ${t.assignedBy.lastName}` : '';
+    const student = t.studentId?.userId
+      ? `${t.studentId.userId.firstName} ${t.studentId.userId.lastName}`
+      : '';
+    return [t.tag, t.title, t.description, t.status, supervisor, student]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .includes(query);
+  });
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
   const toggle = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.checked }));
@@ -536,14 +537,17 @@ export default function TasksPage() {
         <Card className="p-10 text-center text-sm text-slate-400">No tasks yet.</Card>
       ) : (
         <div className="space-y-3">
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search tasks by tag, title, status or name…"
+          <FilterBar
+            search={search}
+            onSearch={setSearch}
+            searchPlaceholder="Search tasks by tag, title or name…"
+            filters={[{ key: 'status', label: 'Statuses', options: statusOptions }]}
+            values={filters}
+            onChange={(k, v) => setFilters((f) => ({ ...f, [k]: v }))}
           />
           {visibleTasks.length === 0 && (
             <Card className="p-10 text-center text-sm text-slate-400">
-              No tasks match “{search}”.
+              No tasks match your filters.
             </Card>
           )}
           {visibleTasks.map((task) => {

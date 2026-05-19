@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { placementApi } from '../../api/placements';
 import { Badge, Button, Card, Select, Spinner } from '../../components/ui';
+import FilterBar from '../../components/FilterBar';
 
 const STATUS_TONE = { pending: 'warning', active: 'brand', completed: 'success', terminated: 'danger' };
 const tick = (done) => (done ? '✓' : '○');
@@ -183,6 +184,26 @@ export default function PlacementsPage() {
   const [supervisors, setSupervisors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState({});
+
+  const statusOptions = [...new Set(placements.map((p) => p.status).filter(Boolean))].sort();
+  const query = search.trim().toLowerCase();
+  const visible = placements.filter((p) => {
+    if (filters.status && p.status !== filters.status) return false;
+    if (!query) return true;
+    const student = p.studentId?.userId
+      ? `${p.studentId.userId.firstName} ${p.studentId.userId.lastName}`
+      : '';
+    const supervisor = p.supervisorId
+      ? `${p.supervisorId.firstName} ${p.supervisorId.lastName}`
+      : '';
+    return [p.internshipId?.title, p.companyId?.name, student, supervisor]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .includes(query);
+  });
 
   async function load() {
     setLoading(true);
@@ -216,15 +237,30 @@ export default function PlacementsPage() {
         <div className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700">{error}</div>
       )}
 
+      {!loading && placements.length > 0 && (
+        <FilterBar
+          search={search}
+          onSearch={setSearch}
+          searchPlaceholder="Search by student, internship, company or supervisor…"
+          filters={[{ key: 'status', label: 'Statuses', options: statusOptions }]}
+          values={filters}
+          onChange={(k, v) => setFilters((f) => ({ ...f, [k]: v }))}
+        />
+      )}
+
       {loading ? (
         <div className="flex justify-center py-16">
           <Spinner size="lg" className="text-brand-600" />
         </div>
       ) : placements.length === 0 ? (
         <Card className="p-10 text-center text-sm text-slate-400">No placements yet.</Card>
+      ) : visible.length === 0 ? (
+        <Card className="p-10 text-center text-sm text-slate-400">
+          No placements match your filters.
+        </Card>
       ) : (
         <div className="space-y-3">
-          {placements.map((p) => (
+          {visible.map((p) => (
             <PlacementCard
               key={p._id}
               placement={p}

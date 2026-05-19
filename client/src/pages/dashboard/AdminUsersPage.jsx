@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { adminApi } from '../../api/admin';
 import { Badge, Button, Card, Input, Spinner } from '../../components/ui';
+import FilterBar from '../../components/FilterBar';
 
 const STATUS_TONE = { active: 'success', suspended: 'warning', deleted: 'danger' };
 
@@ -10,6 +11,15 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState('');
+  const [filters, setFilters] = useState({});
+
+  const roleOptions = [...new Set(users.map((u) => u.userType).filter(Boolean))].sort();
+  const statusOptions = [...new Set(users.map((u) => u.status).filter(Boolean))].sort();
+  const visible = users.filter(
+    (u) =>
+      (!filters.userType || u.userType === filters.userType) &&
+      (!filters.status || u.status === filters.status),
+  );
 
   async function load(term = '') {
     setLoading(true);
@@ -68,6 +78,17 @@ export default function AdminUsersPage() {
         </Button>
       </form>
 
+      {!loading && users.length > 0 && (
+        <FilterBar
+          filters={[
+            { key: 'userType', label: 'Roles', options: roleOptions },
+            { key: 'status', label: 'Statuses', options: statusOptions },
+          ]}
+          values={filters}
+          onChange={(k, v) => setFilters((f) => ({ ...f, [k]: v }))}
+        />
+      )}
+
       {error && (
         <div className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700">{error}</div>
       )}
@@ -89,7 +110,7 @@ export default function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
+                {visible.map((u) => (
                   <tr key={u._id} className="border-b border-slate-50 last:border-0">
                     <td className="px-4 py-3">
                       <div className="font-medium text-slate-800">
@@ -125,7 +146,7 @@ export default function AdminUsersPage() {
                     </td>
                   </tr>
                 ))}
-                {users.length === 0 && (
+                {visible.length === 0 && (
                   <tr>
                     <td colSpan={4} className="px-4 py-10 text-center text-sm text-slate-400">
                       No users found.

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { companySearchApi, invitationApi } from '../../api/internships';
 import { Badge, Button, Card, Input, Spinner, Textarea } from '../../components/ui';
+import FilterBar from '../../components/FilterBar';
 
 const STATUS_TONE = { sent: 'warning', accepted: 'success', declined: 'danger' };
 
@@ -14,6 +15,14 @@ export default function PartnersPage() {
   // The company whose invite form is open, plus its optional message.
   const [invitingId, setInvitingId] = useState(null);
   const [inviteMessage, setInviteMessage] = useState('');
+  const [inviteFilters, setInviteFilters] = useState({});
+
+  const inviteStatusOptions = [
+    ...new Set(invitations.map((i) => i.status).filter(Boolean)),
+  ].sort();
+  const visibleInvites = invitations.filter(
+    (i) => !inviteFilters.status || i.status === inviteFilters.status,
+  );
 
   async function load(term = '') {
     setLoading(true);
@@ -149,7 +158,18 @@ export default function PartnersPage() {
           </div>
 
           <div>
-            <h2 className="mb-3 text-base font-semibold">Sent invitations</h2>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="text-base font-semibold">Sent invitations</h2>
+              {invitations.length > 0 && (
+                <FilterBar
+                  filters={[
+                    { key: 'status', label: 'Statuses', options: inviteStatusOptions },
+                  ]}
+                  values={inviteFilters}
+                  onChange={(k, v) => setInviteFilters((f) => ({ ...f, [k]: v }))}
+                />
+              )}
+            </div>
             <Card className="overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -161,7 +181,7 @@ export default function PartnersPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {invitations.map((inv) => (
+                    {visibleInvites.map((inv) => (
                       <tr key={inv._id} className="border-b border-slate-50 last:border-0">
                         <td className="px-4 py-3 font-medium text-slate-800">
                           {inv.companyId?.name || '—'}
@@ -179,10 +199,12 @@ export default function PartnersPage() {
                         </td>
                       </tr>
                     ))}
-                    {invitations.length === 0 && (
+                    {visibleInvites.length === 0 && (
                       <tr>
                         <td colSpan={3} className="px-4 py-8 text-center text-sm text-slate-400">
-                          No invitations sent yet.
+                          {invitations.length === 0
+                            ? 'No invitations sent yet.'
+                            : 'No invitations match the filter.'}
                         </td>
                       </tr>
                     )}

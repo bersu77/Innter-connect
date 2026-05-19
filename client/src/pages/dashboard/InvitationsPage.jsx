@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { invitationApi } from '../../api/internships';
 import { Badge, Button, Card, Spinner } from '../../components/ui';
+import FilterBar from '../../components/FilterBar';
 
 const STATUS_TONE = { sent: 'warning', accepted: 'success', declined: 'danger' };
 
@@ -9,6 +10,20 @@ export default function InvitationsPage() {
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState('');
+  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState({});
+
+  const statusOptions = [...new Set(invitations.map((i) => i.status).filter(Boolean))].sort();
+  const query = search.trim().toLowerCase();
+  const visible = invitations.filter((inv) => {
+    if (filters.status && inv.status !== filters.status) return false;
+    if (!query) return true;
+    return [inv.universityId?.name, inv.message]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+      .includes(query);
+  });
 
   async function load() {
     setLoading(true);
@@ -52,15 +67,30 @@ export default function InvitationsPage() {
         <div className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700">{error}</div>
       )}
 
+      {!loading && invitations.length > 0 && (
+        <FilterBar
+          search={search}
+          onSearch={setSearch}
+          searchPlaceholder="Search by university or message…"
+          filters={[{ key: 'status', label: 'Statuses', options: statusOptions }]}
+          values={filters}
+          onChange={(k, v) => setFilters((f) => ({ ...f, [k]: v }))}
+        />
+      )}
+
       {loading ? (
         <div className="flex justify-center py-16">
           <Spinner size="lg" className="text-brand-600" />
         </div>
       ) : invitations.length === 0 ? (
         <Card className="p-10 text-center text-sm text-slate-400">No invitations yet.</Card>
+      ) : visible.length === 0 ? (
+        <Card className="p-10 text-center text-sm text-slate-400">
+          No invitations match your filters.
+        </Card>
       ) : (
         <div className="space-y-3">
-          {invitations.map((inv) => (
+          {visible.map((inv) => (
             <Card key={inv._id} className="flex items-center justify-between gap-3 p-5">
               <div>
                 <div className="font-medium text-slate-800">{inv.universityId?.name || '—'}</div>

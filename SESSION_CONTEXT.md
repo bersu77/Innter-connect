@@ -1,8 +1,8 @@
 # Session Context — InternConnect
 
 > **Handoff snapshot** — last updated 2026-05-19.
-> Phases 0–13 are complete. **Eight** post-phase feature rounds are merged to
-> `staging`, including **report charts** (most recent). There is no
+> Phases 0–13 are complete. **Nine** post-phase feature rounds are merged to
+> `staging`, including **list filters** (most recent). There is no
 > work in progress — a new session can start a fresh feature off `staging`.
 
 ## Project
@@ -91,6 +91,14 @@ dashboards; reporting & analytics; audit & compliance review; NFR hardening + te
    field. `components/ReportCharts.jsx`, lazy-loaded in ReportsPage so `recharts`
    ships as its own on-demand JS chunk and the main bundle stays unchanged.
 
+9. **List filters** (branch `feat/list-filters`) — a reusable `components/FilterBar.jsx`
+   (search box + dropdown filters) added to every dashboard list/search page:
+   Internships, Applications, Placements, Tasks, Admin Users, Organization
+   Verification, Student Verification, Appeals, Assessments, Invitations, Supervisors
+   and Partners. Filtering is client-side over the loaded list, by each page's
+   prominent fields (status, type, role, major, …); dropdown options are derived
+   from the data. AuditPage already had action/status filters and was left as-is.
+
 **Verification baseline:** integration suite `server/tests/integration.mjs` is at
 **115/115 passing**; the seed runs `Task.syncIndexes()` to drop the old
 global-unique `taskNumber` index; `npm run build` passes (charts are a separate
@@ -100,10 +108,10 @@ server (clears the in-memory counter) before re-running, or logins start returni
 
 ## Git state & workflow
 
-- Current branch: **`staging`** — all eight feature rounds are merged; nothing in progress.
+- Current branch: **`staging`** — all nine feature rounds are merged; nothing in progress.
 - `staging` holds Phases 0–13 + the supervisor-workspace, task-deliverables,
   supervisor-reassignment, task-grading-rules, task-counting-and-workspace,
-  academic-student-email, invitation-message and report-charts rounds.
+  academic-student-email, invitation-message, report-charts and list-filters rounds.
 - `main` is frozen at the Phase 0 merge — **never merge into `main`**.
 - **Every feature has its own branch; none are ever deleted.** Feature branches merge
   into `staging` with `--no-ff`.

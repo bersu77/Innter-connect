@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { assessmentApi } from '../../api/tasks';
 import { placementApi } from '../../api/placements';
 import { Badge, Button, Card, Input, Select, Spinner, Textarea } from '../../components/ui';
+import FilterBar from '../../components/FilterBar';
 
 function SubmitForm({ assessment, onSubmit }) {
   const [score, setScore] = useState('');
@@ -54,6 +55,20 @@ export default function AssessmentsPage() {
   const [error, setError] = useState('');
   const [placementId, setPlacementId] = useState('');
   const [requesting, setRequesting] = useState(false);
+  const [search, setSearch] = useState('');
+  const [filters, setFilters] = useState({});
+
+  const assessmentStatus = (a) => (a.submitted ? 'completed' : 'requested');
+  const statusOptions = [...new Set(assessments.map(assessmentStatus))].sort();
+  const query = search.trim().toLowerCase();
+  const visible = assessments.filter((a) => {
+    if (filters.status && assessmentStatus(a) !== filters.status) return false;
+    if (!query) return true;
+    const name = a.studentId?.userId
+      ? `${a.studentId.userId.firstName} ${a.studentId.userId.lastName}`
+      : '';
+    return [name, a.remarks].filter(Boolean).join(' ').toLowerCase().includes(query);
+  });
 
   async function load() {
     setLoading(true);
@@ -138,15 +153,30 @@ export default function AssessmentsPage() {
         </Card>
       )}
 
+      {!loading && assessments.length > 0 && (
+        <FilterBar
+          search={search}
+          onSearch={setSearch}
+          searchPlaceholder="Search by student or remarks…"
+          filters={[{ key: 'status', label: 'Statuses', options: statusOptions }]}
+          values={filters}
+          onChange={(k, v) => setFilters((f) => ({ ...f, [k]: v }))}
+        />
+      )}
+
       {loading ? (
         <div className="flex justify-center py-16">
           <Spinner size="lg" className="text-brand-600" />
         </div>
       ) : assessments.length === 0 ? (
         <Card className="p-10 text-center text-sm text-slate-400">No assessments yet.</Card>
+      ) : visible.length === 0 ? (
+        <Card className="p-10 text-center text-sm text-slate-400">
+          No assessments match your filters.
+        </Card>
       ) : (
         <div className="space-y-3">
-          {assessments.map((a) => (
+          {visible.map((a) => (
             <Card key={a._id} className="p-5">
               <div className="flex items-start justify-between gap-3">
                 <div>
