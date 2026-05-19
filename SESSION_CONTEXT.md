@@ -1,8 +1,8 @@
 # Session Context — InternConnect
 
 > **Handoff snapshot** — last updated 2026-05-19.
-> Phases 0–13 are complete. **Seven** post-phase feature rounds are merged to
-> `staging`, including **invitation message** (most recent). There is no
+> Phases 0–13 are complete. **Eight** post-phase feature rounds are merged to
+> `staging`, including **report charts** (most recent). There is no
 > work in progress — a new session can start a fresh feature off `staging`.
 
 ## Project
@@ -85,18 +85,25 @@ dashboards; reporting & analytics; audit & compliance review; NFR hardening + te
    existed — this round wires up the send form and shows the note in the university's
    "Sent invitations" table.
 
+8. **Report charts** (branch `feat/report-charts`) — every generated report now
+   shows interactive analytical charts (`recharts`): a bar chart of the report's
+   summary metrics, plus a status-breakdown pie when the rows carry a `status`
+   field. `components/ReportCharts.jsx`, lazy-loaded in ReportsPage so `recharts`
+   ships as its own on-demand JS chunk and the main bundle stays unchanged.
+
 **Verification baseline:** integration suite `server/tests/integration.mjs` is at
 **115/115 passing**; the seed runs `Task.syncIndexes()` to drop the old
-global-unique `taskNumber` index; `npm run build` passes.
+global-unique `taskNumber` index; `npm run build` passes (charts are a separate
+lazy chunk).
 Note: the auth limiter is 50 requests / 15 min — enough for one suite run; restart the
 server (clears the in-memory counter) before re-running, or logins start returning 429.
 
 ## Git state & workflow
 
-- Current branch: **`staging`** — all seven feature rounds are merged; nothing in progress.
+- Current branch: **`staging`** — all eight feature rounds are merged; nothing in progress.
 - `staging` holds Phases 0–13 + the supervisor-workspace, task-deliverables,
   supervisor-reassignment, task-grading-rules, task-counting-and-workspace,
-  academic-student-email and invitation-message rounds.
+  academic-student-email, invitation-message and report-charts rounds.
 - `main` is frozen at the Phase 0 merge — **never merge into `main`**.
 - **Every feature has its own branch; none are ever deleted.** Feature branches merge
   into `staging` with `--no-ff`.

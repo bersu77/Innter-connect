@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { Download, FileBarChart } from 'lucide-react';
 import { reportApi } from '../../api/reports';
 import { Button, Card, Spinner } from '../../components/ui';
+
+// Charts pull in the recharts library — load it on demand so it never weighs
+// down the rest of the app, which has no charts.
+const ReportCharts = lazy(() => import('../../components/ReportCharts'));
 
 const labelize = (s) =>
   (s || '').replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase());
@@ -129,6 +133,14 @@ export default function ReportsPage() {
                   </Card>
                 ))}
               </div>
+
+              <Suspense
+                fallback={
+                  <Card className="p-8 text-center text-sm text-slate-400">Loading charts…</Card>
+                }
+              >
+                <ReportCharts summary={summary} rows={rows} />
+              </Suspense>
 
               {rows.length > 0 && (
                 <Card className="overflow-hidden">
