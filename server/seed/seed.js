@@ -204,6 +204,12 @@ async function seed() {
       const app = await Application.create({
         studentId: st._id, internshipId: it._id, companyId: it.companyId, universityId: uni._id,
         coverLetter: COVER, status, submittedAt: ago(22 - k),
+        // A progressed application was university-verified; a still-submitted one
+        // is awaiting verification — giving the demo university a live queue.
+        universityVerification: {
+          status: status === 'submitted' ? 'pending' : 'approved',
+          reviewedAt: status === 'submitted' ? undefined : ago(13 - k),
+        },
         reviewedAt: status === 'submitted' ? undefined : ago(12 - k),
         reviewedBy: status === 'submitted' ? undefined : company.mgr._id,
         rejectionReason: status === 'rejected' ? 'The position was filled by another candidate.' : undefined,

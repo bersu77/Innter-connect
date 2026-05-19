@@ -1,9 +1,9 @@
 # Session Context — InternConnect
 
 > **Handoff snapshot** — last updated 2026-05-19.
-> Phases 0–13 are complete. **Ten** post-phase feature rounds are merged to
-> `staging`, including **light & dark mode** (most recent). There is no
-> work in progress — a new session can start a fresh feature off `staging`.
+> Phases 0–13 are complete. **Eleven** post-phase feature rounds are merged to
+> `staging`, including **application university verification** (most recent). There
+> is no work in progress — a new session can start a fresh feature off `staging`.
 
 ## Project
 
@@ -107,8 +107,21 @@ dashboards; reporting & analytics; audit & compliance review; NFR hardening + te
     (`bg-white`, `text-slate-*`, borders, status tints), so every page is covered
     without per-element `dark:` variants. `darkMode:'class'` set in tailwind config.
 
+11. **Application university verification** (branch `feat/application-university-verification`)
+    — a verification gate in the application workflow. The student names the university
+    they are enrolled at when applying (the apply form has a university selector,
+    pre-filled from their profile). That university is notified and must verify the
+    student (enrolment + documents) before the company can act. `Application` gains
+    `universityVerification` (`{status, reviewedBy, reviewedAt, note}`);
+    `updateApplicationStatus` (company) is gated on `status === 'approved'`;
+    `PATCH /applications/:id/verify` (university) approves or rejects — a rejection
+    **closes the application** (`status: 'rejected'`). New `ApplicationVerificationPage`
+    + a university nav item "Applications"; `listApplications` gains a university
+    branch; the company's ApplicationsPage shows "Awaiting university verification"
+    until it clears.
+
 **Verification baseline:** integration suite `server/tests/integration.mjs` is at
-**115/115 passing**; the seed runs `Task.syncIndexes()` to drop the old
+**119/119 passing**; the seed runs `Task.syncIndexes()` to drop the old
 global-unique `taskNumber` index; `npm run build` passes (charts are a separate
 lazy chunk).
 Note: the auth limiter is 50 requests / 15 min — enough for one suite run; restart the
@@ -116,11 +129,11 @@ server (clears the in-memory counter) before re-running, or logins start returni
 
 ## Git state & workflow
 
-- Current branch: **`staging`** — all ten feature rounds are merged; nothing in progress.
+- Current branch: **`staging`** — all eleven feature rounds are merged; nothing in progress.
 - `staging` holds Phases 0–13 + the supervisor-workspace, task-deliverables,
   supervisor-reassignment, task-grading-rules, task-counting-and-workspace,
-  academic-student-email, invitation-message, report-charts, list-filters and
-  dark-mode rounds.
+  academic-student-email, invitation-message, report-charts, list-filters,
+  dark-mode and application-university-verification rounds.
 - `main` is frozen at the Phase 0 merge — **never merge into `main`**.
 - **Every feature has its own branch; none are ever deleted.** Feature branches merge
   into `staging` with `--no-ff`.
