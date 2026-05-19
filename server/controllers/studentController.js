@@ -19,7 +19,6 @@ const PROFILE_FIELDS = [
   'workAuthorization',
   'certifications',
   'experience',
-  'portfolio',
 ];
 
 // A profile is complete once the core academic fields and a CV are in place —
@@ -104,6 +103,58 @@ export const uploadCv = async (req, res, next) => {
       entityId: profile._id,
     });
     res.json({ success: true, cv: profile.cv });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @route POST /api/students/me/portfolio  — add a work-showcase item. Each item
+// is either a titled link or an uploaded image/file.
+export const addPortfolioItem = async (req, res, next) => {
+  try {
+    const { title, description, link } = req.body;
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ success: false, message: 'A title is required' });
+    }
+    const item = { title: String(title).trim(), description };
+    if (req.file) {
+      item.filename = req.file.originalname;
+      item.path = `/uploads/${req.file.filename}`;
+    } else if (link && String(link).trim()) {
+      item.link = String(link).trim();
+    } else {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Add a link or upload a file for this item' });
+    }
+    const profile = await Student.findOneAndUpdate(
+      { userId: req.user._id },
+      { $push: { portfolio: item } },
+      { new: true, upsert: true, setDefaultsOnInsert: true },
+    );
+    await logAudit({
+      req,
+      action: 'STUDENT_PROFILE_UPDATE',
+      entityType: 'Student',
+      entityId: profile._id,
+    });
+    res.json({ success: true, portfolio: profile.portfolio });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @route DELETE /api/students/me/portfolio/:index  — remove a portfolio item.
+export const removePortfolioItem = async (req, res, next) => {
+  try {
+    const index = Number(req.params.index);
+    const profile = await Student.findOne({ userId: req.user._id });
+    if (!profile || !Number.isInteger(index) || !profile.portfolio?.[index]) {
+      return res.status(404).json({ success: false, message: 'Portfolio item not found' });
+    }
+    profile.portfolio.splice(index, 1);
+    await profile.save();
+    res.json({ success: true, portfolio: profile.portfolio });
   } catch (err) {
     next(err);
   }

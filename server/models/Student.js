@@ -33,12 +33,14 @@ const experienceSchema = new mongoose.Schema(
   { _id: false },
 );
 
-// A showcase of the student's work — a titled link to a repo, drive, etc.
+// A showcase of the student's work — a titled link OR an uploaded image/file.
 const portfolioSchema = new mongoose.Schema(
   {
     title: String,
     description: String,
     link: String,
+    filename: String,
+    path: String,
   },
   { _id: false },
 );

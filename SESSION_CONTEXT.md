@@ -1,9 +1,9 @@
 # Session Context — InternConnect
 
 > **Handoff snapshot** — last updated 2026-05-19.
-> Phases 0–13 are complete. **Fifteen** post-phase feature rounds are merged to
-> `staging`, including **profile portfolio & apply-time suggestions** (most recent).
-> There is no work in progress — a new session can start a fresh feature off `staging`.
+> Phases 0–13 are complete. **Sixteen** post-phase feature rounds are merged to
+> `staging`, including **portfolio uploads** (most recent). There is no work in
+> progress — a new session can start a fresh feature off `staging`.
 
 ## Project
 
@@ -152,8 +152,16 @@ dashboards; reporting & analytics; audit & compliance review; NFR hardening + te
     `selectedItems` as a JSON string (FormData) or array (JSON request). The company
     sees the attachments on each application card.
 
+16. **Portfolio uploads** (branch `feat/portfolio-uploads`) — a profile portfolio
+    item can be a titled link **or** an uploaded image/file (Upwork-style artifacts).
+    `Student.portfolio` gains `filename`/`path`; dedicated endpoints
+    `POST /students/me/portfolio` (multipart) and `DELETE /students/me/portfolio/:index`
+    manage items, so `portfolio` is no longer part of the bulk profile save.
+    StudentProfileForm gets a `PortfolioManager` card. Uploaded artifacts are
+    selectable as application attachments like any other profile item.
+
 **Verification baseline:** integration suite `server/tests/integration.mjs` is at
-**120/120 passing**; the seed runs `Task.syncIndexes()` to drop the old
+**121/121 passing**; the seed runs `Task.syncIndexes()` to drop the old
 global-unique `taskNumber` index; `npm run build` passes (charts are a separate
 lazy chunk).
 Note: the auth limiter is 50 requests / 15 min — enough for one suite run; restart the
@@ -161,12 +169,12 @@ server (clears the in-memory counter) before re-running, or logins start returni
 
 ## Git state & workflow
 
-- Current branch: **`staging`** — all fifteen feature rounds are merged; nothing in progress.
+- Current branch: **`staging`** — all sixteen feature rounds are merged; nothing in progress.
 - `staging` holds Phases 0–13 + the supervisor-workspace, task-deliverables,
   supervisor-reassignment, task-grading-rules, task-counting-and-workspace,
   academic-student-email, invitation-message, report-charts, list-filters,
   dark-mode, application-university-verification, messages-reports-filters,
-  appeal-documents, cv-required and profile-portfolio rounds.
+  appeal-documents, cv-required, profile-portfolio and portfolio-uploads rounds.
 - `main` is frozen at the Phase 0 merge — **never merge into `main`**.
 - **Every feature has its own branch; none are ever deleted.** Feature branches merge
   into `staging` with `--no-ff`.

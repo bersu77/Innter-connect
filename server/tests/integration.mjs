@@ -153,6 +153,17 @@ async function phase3() {
   const studentGet = await api('/api/students/me', { token: ctx.studentToken });
   check('student profile persists', studentGet.status === 200 && studentGet.json?.profile?.gpa === 3.8);
 
+  const portfolioAdd = await api('/api/students/me/portfolio', {
+    method: 'POST',
+    token: ctx.studentToken,
+    body: { title: 'My capstone project', link: 'https://github.com/example/capstone' },
+  });
+  check(
+    'student can add a portfolio item',
+    portfolioAdd.status === 200 &&
+      (portfolioAdd.json?.portfolio || []).some((p) => p.title === 'My capstone project'),
+  );
+
   const unis = await api('/api/universities', { token: ctx.studentToken });
   check(
     'universities list is available',

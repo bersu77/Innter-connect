@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { studentApi, universityApi } from '../../api/profile';
 import { Button, Card, Input, Select, Spinner } from '../../components/ui';
+
+const FIELD_CLS =
+  'h-9 min-w-[8rem] flex-1 rounded-xl bg-white px-3 text-sm text-slate-900 ring-1 ring-slate-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500';
 
 const csv = (arr) => (arr || []).join(', ');
 const toArr = (str) => str.split(',').map((s) => s.trim()).filter(Boolean);
@@ -59,7 +62,7 @@ function ListEditor({ label, hint, items, setItems, fields, summary }) {
             value={draft[f.key] || ''}
             onChange={(e) => setDraft((d) => ({ ...d, [f.key]: e.target.value }))}
             placeholder={f.placeholder}
-            className="h-9 min-w-[8rem] flex-1 rounded-xl bg-white px-3 text-sm text-slate-900 ring-1 ring-slate-200 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-brand-500"
+            className={FIELD_CLS}
           />
         ))}
         <Button type="button" size="sm" variant="secondary" onClick={add}>
@@ -67,6 +70,124 @@ function ListEditor({ label, hint, items, setItems, fields, summary }) {
         </Button>
       </div>
     </div>
+  );
+}
+
+// Work-showcase manager — items are added/removed through dedicated endpoints
+// because each can carry an uploaded image/file.
+function PortfolioManager({ items, setItems, onMessage }) {
+  const [draft, setDraft] = useState({ title: '', description: '', link: '' });
+  const [file, setFile] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef(null);
+  const setField = (k) => (e) => setDraft((d) => ({ ...d, [k]: e.target.value }));
+
+  async function add() {
+    if (!draft.title.trim()) {
+      onMessage({ type: 'error', text: 'A portfolio item needs a title.' });
+      return;
+    }
+    if (!draft.link.trim() && !file) {
+      onMessage({ type: 'error', text: 'Add a link or upload a file for the item.' });
+      return;
+    }
+    setBusy(true);
+    try {
+      const { portfolio } = await studentApi.addPortfolioItem({ ...draft, file });
+      setItems(portfolio || []);
+      setDraft({ title: '', description: '', link: '' });
+      setFile(null);
+      if (fileRef.current) fileRef.current.value = '';
+      onMessage({ type: 'success', text: 'Portfolio item added.' });
+    } catch (err) {
+      onMessage({ type: 'error', text: err.response?.data?.message || 'Could not add the item.' });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(index) {
+    try {
+      const { portfolio } = await studentApi.removePortfolioItem(index);
+      setItems(portfolio || []);
+    } catch (err) {
+      onMessage({ type: 'error', text: err.response?.data?.message || 'Could not remove the item.' });
+    }
+  }
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-base font-semibold">Work showcase / portfolio</h2>
+      <p className="mt-1 text-sm text-slate-500">
+        Optional — add work samples as a link or an uploaded image/file. You can attach these to
+        an application later.
+      </p>
+
+      {items.length > 0 && (
+        <ul className="mt-3 space-y-1.5">
+          {items.map((p, i) => (
+            <li
+              key={i}
+              className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm"
+            >
+              <span className="min-w-0 truncate">
+                <span className="font-medium text-slate-700">{p.title}</span>
+                {(p.link || p.path) && (
+                  <a
+                    href={p.link || p.path}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="ml-2 text-brand-600 hover:underline"
+                  >
+                    {p.path ? `📎 ${p.filename || 'file'}` : '🔗 link'}
+                  </a>
+                )}
+              </span>
+              <button
+                type="button"
+                aria-label="Remove"
+                onClick={() => remove(i)}
+                className="shrink-0 text-slate-400 transition-colors hover:text-red-500"
+              >
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="mt-3 space-y-2">
+        <div className="flex flex-wrap gap-2">
+          <input
+            className={FIELD_CLS}
+            placeholder="Title"
+            value={draft.title}
+            onChange={setField('title')}
+          />
+          <input
+            className={FIELD_CLS}
+            placeholder="Short description"
+            value={draft.description}
+            onChange={setField('description')}
+          />
+        </div>
+        <input
+          className={`${FIELD_CLS} w-full`}
+          placeholder="Link (URL) — or upload a file below"
+          value={draft.link}
+          onChange={setField('link')}
+        />
+        <input
+          type="file"
+          ref={fileRef}
+          onChange={(e) => setFile(e.target.files[0] || null)}
+          className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-brand-700 hover:file:bg-brand-100"
+        />
+        <Button type="button" size="sm" loading={busy} onClick={add}>
+          Add item
+        </Button>
+      </div>
+    </Card>
   );
 }
 
@@ -137,7 +258,6 @@ export default function StudentProfileForm() {
         desiredLocations: toArr(form.desiredLocations),
         certifications: certs,
         experience,
-        portfolio,
       });
       setMessage({ type: 'success', text: 'Profile saved successfully.' });
     } catch (err) {
@@ -239,19 +359,6 @@ export default function StudentProfileForm() {
             ]}
             summary={(e) => `${e.role}${e.organization ? ` at ${e.organization}` : ''}`}
           />
-          <ListEditor
-            label="Work showcase / portfolio"
-            hint="Optional — titled links to your work (GitHub, Drive, Behance, …)."
-            items={portfolio}
-            setItems={setPortfolio}
-            fields={[
-              { key: 'title', placeholder: 'Title' },
-              { key: 'link', placeholder: 'Link (URL)' },
-              { key: 'description', placeholder: 'Short description' },
-            ]}
-            summary={(p) => p.title || p.link}
-          />
-
           <div className="sm:col-span-2">
             <Button type="submit" loading={saving}>
               Save profile
@@ -293,6 +400,8 @@ export default function StudentProfileForm() {
         </div>
         <p className="mt-2 text-xs text-slate-400">PDF, DOC or DOCX — max 5 MB.</p>
       </Card>
+
+      <PortfolioManager items={portfolio} setItems={setPortfolio} onMessage={setMessage} />
     </div>
   );
 }
