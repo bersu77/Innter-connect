@@ -21,6 +21,28 @@ const certificationSchema = new mongoose.Schema(
   { _id: false },
 );
 
+// Prior work experience the student lists on their profile.
+const experienceSchema = new mongoose.Schema(
+  {
+    role: String,
+    organization: String,
+    startDate: String,
+    endDate: String,
+    description: String,
+  },
+  { _id: false },
+);
+
+// A showcase of the student's work — a titled link to a repo, drive, etc.
+const portfolioSchema = new mongoose.Schema(
+  {
+    title: String,
+    description: String,
+    link: String,
+  },
+  { _id: false },
+);
+
 const studentSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
@@ -39,7 +61,10 @@ const studentSchema = new mongoose.Schema(
     interests: { type: [String], default: [] },
     languages: { type: [String], default: [] },
     cv: cvSchema,
+    // Optional profile extras — suggested as application attachments at apply time.
     certifications: { type: [certificationSchema], default: [] },
+    experience: { type: [experienceSchema], default: [] },
+    portfolio: { type: [portfolioSchema], default: [] },
     availableSince: Date,
     desiredLocations: { type: [String], default: [] },
     workAuthorization: { type: String, default: '' },

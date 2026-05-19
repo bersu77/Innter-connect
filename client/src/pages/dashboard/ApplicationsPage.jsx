@@ -163,6 +163,33 @@ export default function ApplicationsPage() {
                 </p>
               )}
 
+              {app.attachments?.length > 0 && (
+                <div className="mt-3 rounded-xl bg-slate-50 px-3.5 py-2.5">
+                  <p className="text-xs font-medium text-slate-500">Attachments</p>
+                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                    {app.attachments.map((a, i) => {
+                      const href = a.link || a.path;
+                      return href ? (
+                        <a
+                          key={i}
+                          href={href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-sm text-brand-600 hover:underline"
+                        >
+                          📎 {a.label}
+                        </a>
+                      ) : (
+                        <span key={i} className="text-sm text-slate-600">
+                          • {a.label}
+                          {a.detail ? ` (${a.detail})` : ''}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs text-slate-400">
                   Submitted {new Date(app.submittedAt || app.createdAt).toLocaleDateString()}

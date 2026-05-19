@@ -1,9 +1,9 @@
 # Session Context — InternConnect
 
 > **Handoff snapshot** — last updated 2026-05-19.
-> Phases 0–13 are complete. **Fourteen** post-phase feature rounds are merged to
-> `staging`, including **CV required** (most recent). There is no
-> work in progress — a new session can start a fresh feature off `staging`.
+> Phases 0–13 are complete. **Fifteen** post-phase feature rounds are merged to
+> `staging`, including **profile portfolio & apply-time suggestions** (most recent).
+> There is no work in progress — a new session can start a fresh feature off `staging`.
 
 ## Project
 
@@ -140,8 +140,20 @@ dashboards; reporting & analytics; audit & compliance review; NFR hardening + te
     (Applying is not separately gated — the requirement is at profile completion,
     matching the request.)
 
+15. **Profile portfolio & apply-time suggestions** (branch `feat/profile-portfolio`)
+    — students add optional profile extras: certifications, work experience, and a
+    work-showcase portfolio (titled links). `Student.experience`/`portfolio` added;
+    StudentProfileForm gains a reusable `ListEditor` for all three. When applying,
+    the form suggests these profile items (plus the CV) as a checklist — ticked
+    items are snapshotted **server-side** from the real profile onto
+    `Application.attachments` (enriched to `{kind, label, detail, link, filename,
+    path}`); the student can also upload files manually. `POST /applications` is now
+    multipart (`upload.array('attachments', 5)`); `applyToInternship` tolerates
+    `selectedItems` as a JSON string (FormData) or array (JSON request). The company
+    sees the attachments on each application card.
+
 **Verification baseline:** integration suite `server/tests/integration.mjs` is at
-**119/119 passing**; the seed runs `Task.syncIndexes()` to drop the old
+**120/120 passing**; the seed runs `Task.syncIndexes()` to drop the old
 global-unique `taskNumber` index; `npm run build` passes (charts are a separate
 lazy chunk).
 Note: the auth limiter is 50 requests / 15 min — enough for one suite run; restart the
@@ -149,12 +161,12 @@ server (clears the in-memory counter) before re-running, or logins start returni
 
 ## Git state & workflow
 
-- Current branch: **`staging`** — all fourteen feature rounds are merged; nothing in progress.
+- Current branch: **`staging`** — all fifteen feature rounds are merged; nothing in progress.
 - `staging` holds Phases 0–13 + the supervisor-workspace, task-deliverables,
   supervisor-reassignment, task-grading-rules, task-counting-and-workspace,
   academic-student-email, invitation-message, report-charts, list-filters,
   dark-mode, application-university-verification, messages-reports-filters,
-  appeal-documents and cv-required rounds.
+  appeal-documents, cv-required and profile-portfolio rounds.
 - `main` is frozen at the Phase 0 merge — **never merge into `main`**.
 - **Every feature has its own branch; none are ever deleted.** Feature branches merge
   into `staging` with `--no-ff`.

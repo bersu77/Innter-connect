@@ -30,8 +30,15 @@ const noteSchema = new mongoose.Schema(
   { _id: false },
 );
 
+// An attachment is either a snapshot of a profile item the student chose to
+// include (kind: cv | certification | experience | portfolio) or a file they
+// uploaded manually with the application (kind: upload).
 const attachmentSchema = new mongoose.Schema(
   {
+    kind: { type: String, default: 'upload' },
+    label: String,
+    detail: String,
+    link: String,
     filename: String,
     path: String,
     uploadedAt: { type: Date, default: Date.now },
