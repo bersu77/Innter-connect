@@ -170,6 +170,7 @@ const APPEAL_TONE = { pending: 'warning', upheld: 'neutral', adjusted: 'success'
 function AppealSection({ task, isStudent, onAppeal, onResolve }) {
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState('');
+  const [files, setFiles] = useState([]);
   const [response, setResponse] = useState('');
   const [score, setScore] = useState(task.score ?? '');
   const [busy, setBusy] = useState(false);
@@ -198,6 +199,21 @@ function AppealSection({ task, isStudent, onAppeal, onResolve }) {
           <Badge tone={APPEAL_TONE[appeal.status]}>{appeal.status}</Badge>
         </div>
         <p className="mt-1 whitespace-pre-line text-amber-800/80">“{appeal.reason}”</p>
+        {appeal.documents?.length > 0 && (
+          <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1">
+            {appeal.documents.map((d, i) => (
+              <a
+                key={i}
+                href={d.path}
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs font-medium text-brand-700 hover:underline"
+              >
+                📎 {d.filename}
+              </a>
+            ))}
+          </div>
+        )}
         {appeal.response && (
           <p className="mt-1.5 border-t border-amber-200 pt-1.5 text-slate-600">
             <span className="font-medium text-slate-700">Supervisor: </span>
@@ -257,6 +273,17 @@ function AppealSection({ task, isStudent, onAppeal, onResolve }) {
             onChange={(e) => setReason(e.target.value)}
             placeholder="Explain what you'd like the supervisor to reconsider…"
           />
+          <div>
+            <label className="mb-1 block text-sm font-medium text-slate-700">
+              Supporting documents (optional)
+            </label>
+            <input
+              type="file"
+              multiple
+              onChange={(e) => setFiles([...e.target.files])}
+              className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-brand-700 hover:file:bg-brand-100"
+            />
+          </div>
           {error && <p className="text-xs text-red-500">{error}</p>}
           <div className="flex gap-2">
             <Button
@@ -267,7 +294,7 @@ function AppealSection({ task, isStudent, onAppeal, onResolve }) {
                   setError('Please explain why you are appealing.');
                   return;
                 }
-                run(() => onAppeal(task._id, reason));
+                run(() => onAppeal(task._id, reason, files));
               }}
             >
               Submit appeal
@@ -358,8 +385,8 @@ export default function TasksPage() {
     }
   }
 
-  async function appeal(id, reason) {
-    await taskApi.appeal(id, reason);
+  async function appeal(id, reason, documents) {
+    await taskApi.appeal(id, reason, documents);
     await load();
   }
 

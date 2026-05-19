@@ -18,7 +18,13 @@ router.post('/', protect, authorize('company'), createTask);
 router.patch('/:id/progress', protect, authorize('student'), updateProgress);
 router.post('/:id/submit', protect, authorize('student'), upload.single('document'), submitTask);
 router.patch('/:id/grade', protect, authorize('company'), gradeTask);
-router.post('/:id/appeal', protect, authorize('student'), submitGradeAppeal);
+router.post(
+  '/:id/appeal',
+  protect,
+  authorize('student'),
+  upload.array('documents', 5),
+  submitGradeAppeal,
+);
 router.patch('/:id/appeal', protect, authorize('company'), resolveGradeAppeal);
 
 export default router;

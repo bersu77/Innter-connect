@@ -1,8 +1,8 @@
 # Session Context — InternConnect
 
 > **Handoff snapshot** — last updated 2026-05-19.
-> Phases 0–13 are complete. **Twelve** post-phase feature rounds are merged to
-> `staging`, including **messages & reports filters** (most recent). There is no
+> Phases 0–13 are complete. **Thirteen** post-phase feature rounds are merged to
+> `staging`, including **appeal documents** (most recent). There is no
 > work in progress — a new session can start a fresh feature off `staging`.
 
 ## Project
@@ -125,6 +125,13 @@ dashboards; reporting & analytics; audit & compliance review; NFR hardening + te
     search on the Messages thread list, and a title search + `type` filter on the
     Reports list (`FilterBar`). Every searchable list in the dashboard now has a filter.
 
+13. **Appeal documents** (branch `feat/appeal-documents`) — a student appealing a
+    task grade can optionally attach supporting documents. `Task.gradeAppeal.documents[]`;
+    `POST /tasks/:id/appeal` now runs `upload.array('documents', 5)`; `taskApi.appeal`
+    sends multipart form data; the appeal panel shows the attached files to both the
+    student and the supervisor. (A JSON appeal with no files still works — multer
+    passes non-multipart requests through.)
+
 **Verification baseline:** integration suite `server/tests/integration.mjs` is at
 **119/119 passing**; the seed runs `Task.syncIndexes()` to drop the old
 global-unique `taskNumber` index; `npm run build` passes (charts are a separate
@@ -134,11 +141,12 @@ server (clears the in-memory counter) before re-running, or logins start returni
 
 ## Git state & workflow
 
-- Current branch: **`staging`** — all twelve feature rounds are merged; nothing in progress.
+- Current branch: **`staging`** — all thirteen feature rounds are merged; nothing in progress.
 - `staging` holds Phases 0–13 + the supervisor-workspace, task-deliverables,
   supervisor-reassignment, task-grading-rules, task-counting-and-workspace,
   academic-student-email, invitation-message, report-charts, list-filters,
-  dark-mode, application-university-verification and messages-reports-filters rounds.
+  dark-mode, application-university-verification, messages-reports-filters and
+  appeal-documents rounds.
 - `main` is frozen at the Phase 0 merge — **never merge into `main`**.
 - **Every feature has its own branch; none are ever deleted.** Feature branches merge
   into `staging` with `--no-ff`.

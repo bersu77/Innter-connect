@@ -329,7 +329,12 @@ export const submitGradeAppeal = async (req, res, next) => {
         .json({ success: false, message: 'Please explain why you are appealing the grade.' });
     }
 
-    task.gradeAppeal = { reason, status: 'pending', submittedAt: new Date() };
+    // Optional supporting documents uploaded with the appeal.
+    const documents = (req.files || []).map((f) => ({
+      filename: f.originalname,
+      path: `/uploads/${f.filename}`,
+    }));
+    task.gradeAppeal = { reason, status: 'pending', submittedAt: new Date(), documents };
     await task.save();
 
     await logAudit({ req, action: 'TASK_GRADE_APPEAL', entityType: 'Task', entityId: task._id });
