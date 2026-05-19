@@ -509,6 +509,71 @@ async function phase8() {
     okSubmit.status === 200 && okSubmit.json?.task?.status === 'completed',
   );
 
+  // Unique task number tag — server-set, format TSK-NNNN.
+  check('a task has a unique number tag', /^TSK-\d{4}$/.test(task.json?.task?.tag || ''));
+
+  // Auto-zero on a missed deadline.
+  const overdue = await api('/api/tasks', {
+    method: 'POST',
+    token: ctx.supervisorToken,
+    body: { placementId: ctx.placementId, title: 'Overdue — schema diagram', deadline: '2020-01-01' },
+  });
+  const overdueId = overdue.json?.task?._id;
+  const sweep = await api('/api/tasks', { token: ctx.studentToken });
+  const swept = sweep.json?.tasks?.find((t) => t._id === overdueId);
+  check('a task past its deadline is auto-scored 0', swept?.status === 'overdue' && swept?.score === 0);
+
+  const lateSubmit = await api(`/api/tasks/${overdueId}/submit`, {
+    method: 'POST',
+    token: ctx.studentToken,
+    body: { note: 'late attempt' },
+  });
+  check('an overdue task can no longer be submitted', lateSubmit.status === 400);
+
+  // Grade appeal — only a graded task can be appealed.
+  const earlyAppeal = await api(`/api/tasks/${ctx.taskId}/appeal`, {
+    method: 'POST',
+    token: ctx.studentToken,
+    body: { reason: 'too early' },
+  });
+  check('an ungraded task cannot be appealed', earlyAppeal.status === 400);
+
+  const gradeForAppeal = await api(`/api/tasks/${dtId}/grade`, {
+    method: 'PATCH',
+    token: ctx.supervisorToken,
+    body: { score: 60, feedback: 'Adequate.' },
+  });
+  check('supervisor grades a task ahead of the appeal', gradeForAppeal.status === 200);
+
+  const appeal = await api(`/api/tasks/${dtId}/appeal`, {
+    method: 'POST',
+    token: ctx.studentToken,
+    body: { reason: 'I believe this deserves a higher score.' },
+  });
+  check(
+    'student can appeal a task grade',
+    appeal.status === 201 && appeal.json?.task?.gradeAppeal?.status === 'pending',
+  );
+
+  const reAppeal = await api(`/api/tasks/${dtId}/appeal`, {
+    method: 'POST',
+    token: ctx.studentToken,
+    body: { reason: 'again' },
+  });
+  check('a grade cannot be appealed twice', reAppeal.status === 400);
+
+  const resolveAppeal = await api(`/api/tasks/${dtId}/appeal`, {
+    method: 'PATCH',
+    token: ctx.supervisorToken,
+    body: { response: 'Reviewed — score raised.', score: 75 },
+  });
+  check(
+    'supervisor can resolve a grade appeal with an adjusted score',
+    resolveAppeal.status === 200 &&
+      resolveAppeal.json?.task?.gradeAppeal?.status === 'adjusted' &&
+      resolveAppeal.json?.task?.score === 75,
+  );
+
   const reqAssessment = await api('/api/assessments', {
     method: 'POST',
     token: ctx.studentToken,

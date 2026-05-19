@@ -2,7 +2,7 @@
 
 > **Handoff snapshot** — last updated 2026-05-19.
 > Phases 0–13 are complete. **Four** post-phase feature rounds are merged to
-> `staging`, including **supervisor reassignment** (most recent). There is no
+> `staging`, including **task grading rules** (most recent). There is no
 > work in progress — a new session can start a fresh feature off `staging`.
 
 ## Project
@@ -45,15 +45,28 @@ dashboards; reporting & analytics; audit & compliance review; NFR hardening + te
    for supervisors (`listTasks`/`gradeTask` key off `placement.supervisorId`, not
    `task.assignedBy`), so a newly-assigned supervisor sees and can grade the
    placement's existing tasks. PlacementsPage has a **"Change supervisor"** control.
+4. **Task grading rules** (branch `feat/task-grading-rules`) — three task additions:
+   **(a) Auto-zero on a missed deadline** — a task not completed before its deadline
+   is automatically scored 0. Lazy enforcement (`applyOverdue` runs on every task
+   read/write — no background job, infrastructure is deferred); once overdue the task
+   is locked, so `submitTask`/`updateProgress` reject it. **(b) Grade appeals** — a
+   student can appeal a graded task (`POST /tasks/:id/appeal`, including an auto-zero);
+   the placement **supervisor** resolves it (`PATCH /tasks/:id/appeal`), upholding the
+   grade or adjusting the score. `Task.gradeAppeal` holds the appeal thread. **(c)
+   Unique task tag** — every task gets a server-set sequential `taskNumber`, surfaced
+   as a `TSK-0042` tag (Mongoose virtual); never editable. TasksPage shows the tag and
+   the appeal UI for both roles.
 
 **Verification baseline:** integration suite `server/tests/integration.mjs` is at
-**101/101 passing** (3 reassignment checks added); `npm run build` passes.
+**109/109 passing** (8 task-grading checks added); `npm run build` passes.
+Note: the auth limiter is 50 requests / 15 min — enough for one suite run; restart the
+server (clears the in-memory counter) before re-running, or logins start returning 429.
 
 ## Git state & workflow
 
 - Current branch: **`staging`** — all four feature rounds are merged; nothing in progress.
-- `staging` holds Phases 0–13 + the supervisor-workspace, task-deliverables and
-  supervisor-reassignment rounds.
+- `staging` holds Phases 0–13 + the supervisor-workspace, task-deliverables,
+  supervisor-reassignment and task-grading-rules rounds.
 - `main` is frozen at the Phase 0 merge — **never merge into `main`**.
 - **Every feature has its own branch; none are ever deleted.** Feature branches merge
   into `staging` with `--no-ff`.
