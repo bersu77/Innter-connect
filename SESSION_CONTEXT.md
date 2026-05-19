@@ -1,9 +1,12 @@
 # Session Context — InternConnect
 
-> **Handoff snapshot** — last updated 2026-05-19.
+> **Handoff snapshot** — last updated 2026-05-20.
 > Phases 0–13 are complete. **Sixteen** post-phase feature rounds are merged to
 > `staging`, including **portfolio uploads** (most recent). There is no work in
 > progress — a new session can start a fresh feature off `staging`.
+> **⚠ Outstanding:** `staging` is **~33 commits ahead of `origin/staging` and has not
+> been pushed** — every post-phase round is local-only. Pushing `staging` (and the
+> feature branches) to GitHub is the one pending action — see "Git state" below.
 
 ## Project
 
@@ -178,10 +181,16 @@ server (clears the in-memory counter) before re-running, or logins start returni
 - `main` is frozen at the Phase 0 merge — **never merge into `main`**.
 - **Every feature has its own branch; none are ever deleted.** Feature branches merge
   into `staging` with `--no-ff`.
-- `main` and `staging` are **pushed** to GitHub (`git@github-bersu:bersu77/Innter-connect.git`
-  — note the `github-bersu` SSH host alias; plain `github.com` uses the wrong account).
-  Branches after the push are local-only.
-- `.claude/settings.local.json` is intentionally left uncommitted.
+- **Push status — action needed:** `main` is on GitHub at the Phase 0 merge. `staging`
+  is **~33 commits ahead of `origin/staging` and has NOT been pushed** — every
+  post-phase round (1–16) and its feature branch is local-only and unbacked-up.
+  Pushing `staging` to GitHub is the pending action. Remote:
+  `git@github-bersu:bersu77/Innter-connect.git` — use the `github-bersu` SSH host
+  alias (plain `github.com` resolves to the wrong account). Push with
+  `git push github-bersu staging` (the `origin` remote already points at this URL —
+  `git push origin staging` works too).
+- `.claude/settings.local.json` is intentionally left uncommitted. `DESIGN_BRIEF.md`
+  is an untracked working-tree file (not created by these feature rounds).
 - Commit style: atomic, conventional messages, end with
   `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`.
 
