@@ -6,6 +6,7 @@ import { internshipApi } from '../../api/internships';
 import { applicationApi } from '../../api/applications';
 import { studentApi, universityApi } from '../../api/profile';
 import { Badge, Button, Card, Select, Spinner, Textarea } from '../../components/ui';
+import ProfileHighlightsPicker from '../../components/ProfileHighlightsPicker';
 
 const fmtDate = (d) => (d ? new Date(d).toLocaleDateString() : '—');
 
@@ -24,7 +25,8 @@ export default function InternshipDetailPage() {
   const [universities, setUniversities] = useState([]);
   const [universityId, setUniversityId] = useState('');
   const [profile, setProfile] = useState(null);
-  const [selected, setSelected] = useState(() => new Set());
+  // Highlights chosen for this application. Array of { kind, index, key, title, detail }.
+  const [highlights, setHighlights] = useState([]);
   const [uploadFiles, setUploadFiles] = useState([]);
   const [applying, setApplying] = useState(false);
   const [applyMessage, setApplyMessage] = useState(null);
@@ -62,45 +64,6 @@ export default function InternshipDetailPage() {
     })();
   }, [role]);
 
-  // Items from the student's profile that can be attached to the application.
-  const suggestions = [];
-  if (profile?.cv?.path) {
-    suggestions.push({ key: 'cv', kind: 'cv', label: `CV — ${profile.cv.filename || 'résumé'}` });
-  }
-  (profile?.certifications || []).forEach((c, i) =>
-    suggestions.push({
-      key: `certification:${i}`,
-      kind: 'certification',
-      index: i,
-      label: `Certification — ${c.name}`,
-    }),
-  );
-  (profile?.experience || []).forEach((e, i) =>
-    suggestions.push({
-      key: `experience:${i}`,
-      kind: 'experience',
-      index: i,
-      label: `Experience — ${e.role}${e.organization ? ` at ${e.organization}` : ''}`,
-    }),
-  );
-  (profile?.portfolio || []).forEach((p, i) =>
-    suggestions.push({
-      key: `portfolio:${i}`,
-      kind: 'portfolio',
-      index: i,
-      label: `Portfolio — ${p.title}`,
-    }),
-  );
-
-  function toggle(key) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
-
   async function handleApply() {
     if (!universityId) {
       setApplyMessage({ type: 'error', text: 'Select the university you are enrolled at.' });
@@ -112,9 +75,7 @@ export default function InternshipDetailPage() {
       await applicationApi.apply(id, {
         coverLetter,
         universityId,
-        selectedItems: suggestions
-          .filter((s) => selected.has(s.key))
-          .map((s) => ({ kind: s.kind, index: s.index })),
+        selectedItems: highlights.map((h) => ({ kind: h.kind, index: h.index })),
         files: uploadFiles,
       });
       setApplied(true);
@@ -259,27 +220,13 @@ export default function InternshipDetailPage() {
                 placeholder="Tell the company why you are a great fit…"
               />
 
-              {suggestions.length > 0 && (
-                <div className="mt-3">
-                  <p className="text-sm font-medium text-slate-700">Attach from your profile</p>
-                  <p className="mb-2 mt-0.5 text-xs text-slate-400">
-                    Suggested from your profile — tick what you'd like the company to see.
-                  </p>
-                  <div className="space-y-1.5">
-                    {suggestions.map((s) => (
-                      <label key={s.key} className="flex items-center gap-2 text-sm text-slate-600">
-                        <input
-                          type="checkbox"
-                          checked={selected.has(s.key)}
-                          onChange={() => toggle(s.key)}
-                          className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-                        />
-                        {s.label}
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <div className="mt-4">
+                <ProfileHighlightsPicker
+                  profile={profile}
+                  selected={highlights}
+                  onChange={setHighlights}
+                />
+              </div>
 
               <div className="mt-3">
                 <label className="mb-1 block text-sm font-medium text-slate-700">
