@@ -539,6 +539,26 @@
 .text-brand-800 { color: var(--brand-700) !important; }
 .text-brand-800\/80 { color: color-mix(in srgb, var(--brand-700) 80%, transparent) !important; }
 
+/* ── Tinted surfaces: bg-{tone}-50 / 100 must re-resolve in dark mode so that
+   "light text on tinted bg" remains readable when .dark inverts the palette.
+   Tailwind freezes these to static hex from tailwind.config.js, so we remap
+   them onto the CSS-var-driven tokens that DO swap on .dark.  */
+.dark .bg-brand-50    { background-color: var(--brand-50)   !important; }
+.dark .bg-brand-50\/50 {
+  background-color: color-mix(in srgb, var(--brand-50) 50%, transparent) !important;
+}
+.dark .bg-brand-100   { background-color: var(--brand-100)  !important; }
+.dark .bg-amber-50    { background-color: var(--warning-50) !important; }
+.dark .bg-amber-100   { background-color: var(--warning-100)!important; }
+.dark .bg-success-50  { background-color: var(--success-50) !important; }
+.dark .bg-success-100 { background-color: var(--success-100)!important; }
+.dark .bg-warning-50  { background-color: var(--warning-50) !important; }
+.dark .bg-warning-100 { background-color: var(--warning-100)!important; }
+.dark .bg-danger-50   { background-color: var(--danger-50)  !important; }
+.dark .bg-danger-100  { background-color: var(--danger-100) !important; }
+.dark .bg-stone-100   { background-color: var(--stone-100)  !important; }
+.dark .bg-stone-200   { background-color: var(--stone-200)  !important; }
+
 /* status surface aliases used by old badges/alerts */
 .bg-emerald-50  { background-color: var(--success-50)  !important; }
 .text-emerald-700 { color: var(--success-700) !important; }

@@ -133,16 +133,57 @@ export default function MessagesPage() {
             )}
             {visibleThreads.map((p) => {
               const c = counterpart(p);
+              const isActive = active?._id === p._id;
               return (
                 <button
                   key={p._id}
                   onClick={() => setActive(p)}
-                  className={`flex w-full flex-col border-b border-slate-50 px-4 py-3 text-left transition-colors last:border-0 hover:bg-slate-50 ${
-                    active?._id === p._id ? 'bg-brand-50' : ''
-                  }`}
+                  aria-current={isActive ? 'true' : undefined}
+                  className="relative flex w-full flex-col px-4 py-3 text-left transition-colors last:border-0"
+                  style={{
+                    background: isActive ? 'var(--brand-50)' : 'transparent',
+                    borderBottom: '1px solid var(--border-subtle)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) e.currentTarget.style.background = 'var(--bg-subtle)';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) e.currentTarget.style.background = 'transparent';
+                  }}
                 >
-                  <span className="text-sm font-medium text-slate-800">{c.name}</span>
-                  <span className="text-xs text-slate-400">{p.internshipId?.title || 'Internship'}</span>
+                  {isActive && (
+                    <span
+                      aria-hidden
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: 10,
+                        bottom: 10,
+                        width: 2,
+                        background: 'var(--brand-500)',
+                        borderRadius: 999,
+                      }}
+                    />
+                  )}
+                  <span
+                    className="text-sm"
+                    style={{
+                      color: isActive ? 'var(--brand-700)' : 'var(--text-primary)',
+                      fontWeight: isActive ? 600 : 500,
+                    }}
+                  >
+                    {c.name}
+                  </span>
+                  <span
+                    className="text-xs"
+                    style={{
+                      color: isActive
+                        ? 'color-mix(in srgb, var(--brand-700) 80%, transparent)'
+                        : 'var(--text-tertiary)',
+                    }}
+                  >
+                    {p.internshipId?.title || 'Internship'}
+                  </span>
                 </button>
               );
             })}
