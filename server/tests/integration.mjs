@@ -716,13 +716,21 @@ async function phase8() {
     body: { score: 88, remarks: 'Strong performance throughout the internship.' },
   });
   check('supervisor can submit an assessment', submit.status === 200 && submit.json?.assessment?.submitted === true);
+  const originalSubmittedDate = submit.json?.assessment?.submittedDate;
 
-  const resubmit = await api(`/api/assessments/${ctx.assessmentId}`, {
+  const edit = await api(`/api/assessments/${ctx.assessmentId}`, {
     method: 'PATCH',
     token: ctx.supervisorToken,
-    body: { score: 50 },
+    body: { score: 92, remarks: 'Revised after the final review meeting.' },
   });
-  check('a submitted assessment is immutable', resubmit.status === 400);
+  check(
+    'supervisor can edit a submitted assessment',
+    edit.status === 200 &&
+      edit.json?.assessment?.submitted === true &&
+      edit.json?.assessment?.score === 92 &&
+      edit.json?.assessment?.remarks === 'Revised after the final review meeting.' &&
+      edit.json?.assessment?.submittedDate === originalSubmittedDate,
+  );
 }
 
 // ── Phase 9 — internship completion & reports ──
