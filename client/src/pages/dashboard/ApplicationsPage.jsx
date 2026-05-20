@@ -3,6 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { applicationApi } from '../../api/applications';
 import { Badge, Button, Card, Spinner } from '../../components/ui';
 import FilterBar from '../../components/FilterBar';
+import PageHeader from '../../components/PageHeader';
 
 const STATUS_TONE = {
   submitted: 'neutral',
@@ -88,16 +89,15 @@ export default function ApplicationsPage() {
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          {isCompany ? 'Applications received' : 'My applications'}
-        </h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {isCompany
+      <PageHeader
+        eyebrow={isCompany ? 'Review' : 'My applications'}
+        title={isCompany ? 'Applications received' : 'My applications'}
+        lede={
+          isCompany
             ? 'Review, shortlist, and decide on applications to your internships.'
-            : 'Track every internship you have applied to and respond to offers.'}
-        </p>
-      </div>
+            : 'Track every internship you have applied to and respond to offers.'
+        }
+      />
 
       {error && (
         <div className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700">{error}</div>

@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { internshipApi } from '../../api/internships';
 import { Badge, Button, Card, Input, Spinner } from '../../components/ui';
 import FilterBar from '../../components/FilterBar';
+import PageHeader from '../../components/PageHeader';
 
 const STATUS_TONE = { active: 'success', draft: 'neutral', closed: 'warning', archived: 'neutral' };
 
@@ -75,24 +76,26 @@ export default function InternshipsPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            {isCompany ? 'My internships' : 'Browse internships'}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {isCompany
-              ? 'Create and manage your internship postings.'
-              : 'Discover internship opportunities that match your skills.'}
-          </p>
-        </div>
-        {isCompany && (
-          <Button onClick={() => navigate('/dashboard/post-internship')}>
-            <Plus className="h-4 w-4" />
-            Post internship
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        eyebrow={isCompany ? 'My postings' : 'Discover'}
+        title={isCompany ? 'My internships' : 'Browse internships'}
+        lede={
+          isCompany
+            ? 'Create and manage your internship postings.'
+            : 'Discover internship opportunities that match your skills.'
+        }
+        meta={items.length ? `${items.length} ${items.length === 1 ? 'posting' : 'postings'}` : null}
+        actions={
+          isCompany && (
+            <Button
+              onClick={() => navigate('/dashboard/post-internship')}
+              leading={<Plus className="h-4 w-4" />}
+            >
+              Post internship
+            </Button>
+          )
+        }
+      />
 
       {!isCompany && (
         <form
