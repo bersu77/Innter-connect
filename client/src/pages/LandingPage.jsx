@@ -408,9 +408,12 @@ function PlacementRateMock() {
 
 // ── Page ────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
-  const [stage, setStage] = useState(-1);
+  const [stage, setStage] = useState(-1);            // active section index — drives reveal classes + ribbon visibility
+  const [ribbonStage, setRibbonStage] = useState(0); // scroll-driven stage 0…7 — fills the ribbon segments
   const refs = useRef([]);
 
+  // Section-level IntersectionObserver — flips the reveal class on enter and
+  // tracks which section is currently in view (drives ribbon visibility).
   useEffect(() => {
     if (typeof IntersectionObserver === 'undefined') return undefined;
     const obs = new IntersectionObserver(
@@ -429,8 +432,44 @@ export default function LandingPage() {
     return () => obs.disconnect();
   }, []);
 
-  const ribbonVisible = stage >= 1 && stage <= 5;
-  const ribbonStage = Math.max(0, stage - 1);
+  // Scroll-driven ribbon stage — advances continuously through ALL 8 stages
+  // from the end of the hero to the start of the final CTA, so every stage
+  // (Post → Complete) is reached even though there are only 6 narrative
+  // sections between them.
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    let raf = 0;
+    function recompute() {
+      raf = 0;
+      const startEl = refs.current[1]; // top of "Lifecycle" section
+      const endEl = refs.current[7];   // top of "Final CTA" section
+      if (!startEl || !endEl) return;
+      const startY = startEl.getBoundingClientRect().top + window.scrollY;
+      const endY = endEl.getBoundingClientRect().top + window.scrollY;
+      const span = endY - startY;
+      if (span <= 0) return;
+      const probe = window.scrollY + window.innerHeight * 0.5;
+      const frac = Math.max(0, Math.min(1, (probe - startY) / span));
+      const idx = Math.min(STAGES.length - 1, Math.floor(frac * STAGES.length));
+      setRibbonStage(idx);
+    }
+    function onScroll() {
+      if (raf) return;
+      raf = requestAnimationFrame(recompute);
+    }
+    recompute();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', recompute);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', recompute);
+    };
+  }, []);
+
+  // Ribbon attaches once the user has scrolled past the hero (any section ≥ 1)
+  // and stays until they reach the final CTA, so all 8 stages get shown.
+  const ribbonVisible = stage >= 1 && stage <= 6;
 
   const setRef = (i) => (el) => { refs.current[i] = el; };
 
