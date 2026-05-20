@@ -211,31 +211,38 @@ export default function DashboardLayout() {
       {/* Main column */}
       <div className="flex min-w-0 flex-1 flex-col">
         <header
-          className="flex items-center sticky top-0 z-30"
+          className="flex items-center sticky top-0 z-30 px-3 sm:px-4 lg:px-6 gap-2 sm:gap-3 lg:gap-4"
           style={{
             height: 'var(--header-h)',
             background: 'color-mix(in srgb, var(--bg-raised) 80%, transparent)',
             backdropFilter: 'blur(var(--blur-md)) saturate(140%)',
             WebkitBackdropFilter: 'blur(var(--blur-md)) saturate(140%)',
             borderBottom: '1px solid var(--border-subtle)',
-            padding: '0 24px',
-            gap: 18,
           }}
         >
           <button
             onClick={() => setMobileOpen(true)}
-            className="btn btn-ghost btn-sm md:hidden"
+            className="btn btn-ghost btn-sm md:hidden shrink-0"
             style={{ width: 36, padding: 0 }}
             aria-label="Open menu"
           >
             <Menu size={20} strokeWidth={1.6} />
           </button>
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+          <div
+            className="min-w-0 flex-1"
+            style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}
+          >
             {user?.organizationName ? (
               <>
-                <span className="t-heading-md">{user.organizationName}</span>
                 <span
-                  className="t-mono"
+                  className="t-heading-md truncate"
+                  style={{ maxWidth: '100%' }}
+                  title={user.organizationName}
+                >
+                  {user.organizationName}
+                </span>
+                <span
+                  className="t-mono truncate"
                   style={{
                     fontSize: 10.5,
                     letterSpacing: '0.18em',
@@ -249,7 +256,7 @@ export default function DashboardLayout() {
               </>
             ) : (
               <span
-                className="t-mono"
+                className="t-mono truncate"
                 style={{
                   fontSize: 11,
                   letterSpacing: '0.18em',
@@ -261,30 +268,22 @@ export default function DashboardLayout() {
               </span>
             )}
           </div>
-          <div
-            style={{
-              marginLeft: 'auto',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-            }}
-          >
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <ThemeToggle />
             <NotificationBell />
             <div
+              className="flex items-center gap-2 sm:gap-2.5"
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                paddingLeft: 12,
-                marginLeft: 4,
+                paddingLeft: 8,
+                marginLeft: 2,
                 borderLeft: '1px solid var(--border-subtle)',
                 height: 36,
               }}
             >
               <span
-                className="t-body-md hidden sm:inline"
-                style={{ color: 'var(--text-secondary)' }}
+                className="t-body-md hidden lg:inline truncate"
+                style={{ color: 'var(--text-secondary)', maxWidth: 160 }}
+                title={name}
               >
                 {name}
               </span>
@@ -302,6 +301,7 @@ export default function DashboardLayout() {
                   fontWeight: 600,
                   fontSize: 13,
                   fontFamily: 'var(--font-sans)',
+                  flexShrink: 0,
                 }}
               >
                 {initial}

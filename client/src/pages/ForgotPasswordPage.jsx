@@ -35,12 +35,12 @@ export default function ForgotPasswordPage() {
         <div className="mb-8 flex justify-center">
           <Link to="/"><Logo /></Link>
         </div>
-        <Card style={{ padding: 32 }}>
+        <Card style={{ padding: 'clamp(20px, 5vw, 32px)' }}>
           <span className="t-eyebrow">Forgot password</span>
           <h1
             style={{
               fontFamily: 'var(--font-display)',
-              fontSize: 32,
+              fontSize: 'clamp(26px, 6vw, 32px)',
               lineHeight: 1.05,
               letterSpacing: '-0.015em',
               margin: '6px 0 0',

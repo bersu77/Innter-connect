@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { placementApi } from '../../api/placements';
 import { messageApi } from '../../api/messages';
@@ -17,20 +18,29 @@ export default function MessagesPage() {
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
   const [threadSearch, setThreadSearch] = useState('');
+  // On mobile the layout is single-pane: 'list' shows the threads, 'thread'
+  // shows the active conversation. md+ shows both side-by-side always.
+  const [mobileView, setMobileView] = useState('list');
   const endRef = useRef(null);
 
   useEffect(() => {
     placementApi
       .list()
       .then(({ placements }) => {
-        // A thread needs both a student and a supervisor.
         const list = (placements || []).filter((p) => p.supervisorId);
         setThreads(list);
+        // Auto-select the first thread for the side-by-side desktop layout;
+        // on mobile the pane only opens after the user picks a thread.
         if (list.length) setActive(list[0]);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  function openThread(p) {
+    setActive(p);
+    setMobileView('thread');
+  }
 
   useEffect(() => {
     if (!active) return undefined;
@@ -118,7 +128,11 @@ export default function MessagesPage() {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-3">
-          <Card className="overflow-hidden md:col-span-1">
+          <Card
+            className={`overflow-hidden md:col-span-1 ${
+              mobileView === 'thread' ? 'hidden md:block' : ''
+            }`}
+          >
             <div className="border-b border-slate-100 p-2">
               <Input
                 value={threadSearch}
@@ -137,7 +151,7 @@ export default function MessagesPage() {
               return (
                 <button
                   key={p._id}
-                  onClick={() => setActive(p)}
+                  onClick={() => openThread(p)}
                   aria-current={isActive ? 'true' : undefined}
                   className="relative flex w-full flex-col px-4 py-3 text-left transition-colors last:border-0"
                   style={{
@@ -189,15 +203,32 @@ export default function MessagesPage() {
             })}
           </Card>
 
-          <Card className="flex min-h-[28rem] flex-col md:col-span-2">
+          <Card
+            className={`flex min-h-[28rem] flex-col md:col-span-2 ${
+              mobileView === 'list' ? 'hidden md:flex' : ''
+            }`}
+          >
             {active &&
               (() => {
                 const c = counterpart(active);
                 return (
                   <>
-                    <div className="border-b border-slate-100 px-4 py-3">
-                      <div className="text-sm font-semibold text-slate-800">{c.name}</div>
-                      {c.username && <div className="text-xs text-slate-400">@{c.username}</div>}
+                    <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => setMobileView('list')}
+                        className="btn btn-ghost btn-sm md:hidden shrink-0"
+                        style={{ width: 32, height: 32, padding: 0, marginLeft: -4 }}
+                        aria-label="Back to conversations"
+                      >
+                        <ArrowLeft size={16} strokeWidth={1.8} />
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold text-slate-800 truncate">{c.name}</div>
+                        {c.username && (
+                          <div className="text-xs text-slate-400 truncate">@{c.username}</div>
+                        )}
+                      </div>
                     </div>
                     <div className="flex-1 space-y-3 overflow-y-auto p-4">
                       {messages.length === 0 && (

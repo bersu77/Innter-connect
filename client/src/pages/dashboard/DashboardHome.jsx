@@ -79,11 +79,12 @@ export default function DashboardHome() {
         <h1
           style={{
             fontFamily: 'var(--font-display)',
-            fontSize: 'clamp(36px, 4vw, 48px)',
+            fontSize: 'clamp(28px, 6vw, 48px)',
             lineHeight: 1.04,
             letterSpacing: '-0.02em',
             margin: '6px 0 0',
             fontWeight: 400,
+            wordBreak: 'break-word',
           }}
         >
           Welcome back,{' '}
@@ -111,8 +112,8 @@ export default function DashboardHome() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              gap: 14,
+              gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+              gap: 12,
             }}
           >
             {entries.length === 0 ? (
@@ -136,12 +137,12 @@ export default function DashboardHome() {
               </Card>
             ) : (
               entries.map(([key, value]) => (
-                <Card key={key} style={{ padding: 18 }}>
+                <Card key={key} style={{ padding: 'clamp(14px, 3vw, 18px)' }}>
                   <span className="t-eyebrow">{labels[key]}</span>
                   <div
                     style={{
                       fontFamily: 'var(--font-display)',
-                      fontSize: 44,
+                      fontSize: 'clamp(32px, 6vw, 44px)',
                       lineHeight: 1,
                       letterSpacing: '-0.02em',
                       fontWeight: 400,

@@ -29,7 +29,7 @@ export default function NotFoundPage() {
       <h1
         style={{
           fontFamily: 'var(--font-display)',
-          fontSize: 32,
+          fontSize: 'clamp(26px, 6vw, 32px)',
           lineHeight: 1.05,
           letterSpacing: '-0.015em',
           margin: '8px 0 0',

@@ -77,12 +77,12 @@ export default function RegisterPage() {
         <div className="mb-8 flex justify-center">
           <Link to="/"><Logo /></Link>
         </div>
-        <Card style={{ padding: 32 }}>
+        <Card style={{ padding: 'clamp(20px, 5vw, 32px)' }}>
           <span className="t-eyebrow">Create your account</span>
           <h1
             style={{
               fontFamily: 'var(--font-display)',
-              fontSize: 36,
+              fontSize: 'clamp(28px, 7vw, 36px)',
               lineHeight: 1.05,
               letterSpacing: '-0.018em',
               margin: '6px 0 0',

@@ -487,14 +487,10 @@ export default function LandingPage() {
       <section
         ref={setRef(0)}
         data-section="0"
-        className="mx-auto"
+        className="mx-auto grid grid-cols-1 items-center gap-8 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:gap-10"
         style={{
           maxWidth: 'var(--content-max)',
-          padding: '80px var(--content-pad-x) 64px',
-          display: 'grid',
-          gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr)',
-          gap: 40,
-          alignItems: 'center',
+          padding: 'clamp(48px, 8vw, 80px) var(--content-pad-x) clamp(40px, 6vw, 64px)',
         }}
       >
         <HeroLeft />
@@ -510,7 +506,7 @@ export default function LandingPage() {
         className="reveal mx-auto"
         style={{
           maxWidth: 'var(--content-max)',
-          padding: '80px var(--content-pad-x)',
+          padding: 'clamp(56px, 8vw, 80px) var(--content-pad-x)',
         }}
       >
         <span className="t-eyebrow">The lifecycle</span>
@@ -583,7 +579,7 @@ export default function LandingPage() {
         className="reveal mx-auto"
         style={{
           maxWidth: 'var(--content-max)',
-          padding: '80px var(--content-pad-x)',
+          padding: 'clamp(56px, 8vw, 80px) var(--content-pad-x)',
         }}
       >
         <span className="t-eyebrow">One workspace · five roles</span>
@@ -662,7 +658,7 @@ export default function LandingPage() {
         className="reveal mx-auto"
         style={{
           maxWidth: 'var(--content-max)',
-          padding: '80px var(--content-pad-x)',
+          padding: 'clamp(56px, 8vw, 80px) var(--content-pad-x)',
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
           gap: 40,
@@ -709,7 +705,7 @@ export default function LandingPage() {
         className="reveal mx-auto"
         style={{
           maxWidth: 'var(--content-max)',
-          padding: '80px var(--content-pad-x)',
+          padding: 'clamp(56px, 8vw, 80px) var(--content-pad-x)',
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
           gap: 40,
@@ -756,7 +752,7 @@ export default function LandingPage() {
         className="reveal mx-auto"
         style={{
           maxWidth: 'var(--content-max)',
-          padding: '80px var(--content-pad-x)',
+          padding: 'clamp(56px, 8vw, 80px) var(--content-pad-x)',
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
           gap: 40,
@@ -795,7 +791,7 @@ export default function LandingPage() {
         className="reveal mx-auto"
         style={{
           maxWidth: 'var(--content-max)',
-          padding: '80px var(--content-pad-x)',
+          padding: 'clamp(56px, 8vw, 80px) var(--content-pad-x)',
         }}
       >
         <span className="t-eyebrow">Built for trust</span>
@@ -858,7 +854,7 @@ export default function LandingPage() {
         className="reveal mx-auto"
         style={{
           maxWidth: 'var(--content-max)',
-          padding: '120px var(--content-pad-x) 140px',
+          padding: 'clamp(80px, 12vw, 120px) var(--content-pad-x) clamp(96px, 14vw, 140px)',
           textAlign: 'center',
         }}
       >
