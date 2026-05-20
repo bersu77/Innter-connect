@@ -26,8 +26,12 @@ const assessmentSchema = new mongoose.Schema(
 assessmentSchema.index({ placementId: 1 });
 assessmentSchema.index({ studentId: 1 });
 
-// Supervisors may revise a submitted assessment — the audit log records every
-// edit. `submittedDate` is preserved across edits so the original submission
-// moment is never lost.
+// Immutable once submitted.
+assessmentSchema.pre('save', function (next) {
+  if (!this.isNew && this.submitted && !this.isModified('submitted')) {
+    return next(new Error('A submitted assessment cannot be modified'));
+  }
+  next();
+});
 
 export default mongoose.model('Assessment', assessmentSchema);
