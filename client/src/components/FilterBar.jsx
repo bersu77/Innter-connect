@@ -1,5 +1,6 @@
-// FilterBar — v2. A search input + dropdown filter selects on one row.
-// On desktop sits in a recessed bar (bg-subtle). Wraps to two rows on tablet.
+// FilterBar — a consistent search + dropdown-filter row for list/search pages.
+// `filters`: [{ key, label, options: string[] }]. Options are raw values; the
+// label is shown capitalised. Pass `onSearch` to include a free-text search box.
 import { Input, Select } from './ui';
 
 const humanize = (s) => String(s ?? '').replace(/_/g, ' ');
@@ -13,10 +14,7 @@ export default function FilterBar({
   onChange,
 }) {
   return (
-    <div
-      className="flex flex-wrap items-center gap-2 rounded-lg p-3"
-      style={{ background: 'var(--bg-subtle)' }}
-    >
+    <div className="flex flex-wrap items-center gap-2">
       {onSearch && (
         <Input
           className="min-w-[12rem] flex-1"

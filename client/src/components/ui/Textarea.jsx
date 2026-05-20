@@ -1,4 +1,4 @@
-// Textarea — design-system v2 multi-line input.
+// Textarea — design-system multi-line input.
 import { forwardRef, useId } from 'react';
 
 const Textarea = forwardRef(function Textarea(
@@ -11,11 +11,7 @@ const Textarea = forwardRef(function Textarea(
   return (
     <div className={className}>
       {label && (
-        <label
-          htmlFor={taId}
-          className="mb-1.5 block text-label"
-          style={{ color: 'var(--text-secondary)' }}
-        >
+        <label htmlFor={taId} className="mb-1.5 block text-sm font-medium text-slate-700">
           {label}
         </label>
       )}
@@ -23,16 +19,17 @@ const Textarea = forwardRef(function Textarea(
         id={taId}
         ref={ref}
         rows={rows}
-        aria-invalid={error ? 'true' : undefined}
-        className="textarea"
+        className={[
+          'w-full rounded-xl bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400',
+          'ring-1 transition-all duration-200 ease-out focus:outline-none focus:ring-2',
+          error ? 'ring-red-300 focus:ring-red-500' : 'ring-slate-200 focus:ring-brand-500',
+        ].join(' ')}
         {...props}
       />
       {error ? (
-        <p className="mt-1.5 text-caption" style={{ color: 'var(--danger-600)' }}>
-          {error}
-        </p>
+        <p className="mt-1.5 text-xs text-red-500">{error}</p>
       ) : hint ? (
-        <p className="mt-1.5 t-caption">{hint}</p>
+        <p className="mt-1.5 text-xs text-slate-400">{hint}</p>
       ) : null}
     </div>
   );

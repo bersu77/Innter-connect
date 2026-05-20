@@ -4,7 +4,6 @@ import { taskApi } from '../../api/tasks';
 import { placementApi } from '../../api/placements';
 import { Badge, Button, Card, Input, Select, Spinner, Textarea } from '../../components/ui';
 import FilterBar from '../../components/FilterBar';
-import PageHeader from '../../components/PageHeader';
 
 const TONE = { assigned: 'neutral', in_progress: 'brand', completed: 'success', overdue: 'danger' };
 const label = (s) => (s || '').replace(/_/g, ' ');
@@ -452,15 +451,14 @@ export default function TasksPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader
-        eyebrow={isStudent ? 'Your tasks' : 'Mentorship'}
-        title="Tasks"
-        lede={
-          isStudent
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Tasks</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          {isStudent
             ? 'Tasks assigned by your supervisor — submit the required deliverables and see your grades.'
-            : 'Assign tasks with required deliverables, then review submissions and grade them.'
-        }
-      />
+            : 'Assign tasks with required deliverables, then review submissions and grade them.'}
+        </p>
+      </div>
 
       {error && (
         <div className="rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700">{error}</div>

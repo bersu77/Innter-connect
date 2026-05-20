@@ -27,43 +27,21 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div
-      className="flex min-h-screen items-center justify-center px-4 py-12"
-      style={{ background: 'var(--bg-paper)' }}
-    >
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">
       <div className="w-full max-w-md">
-        <div className="mb-8 flex justify-center">
-          <Link to="/"><Logo /></Link>
+        <div className="mb-6 flex justify-center">
+          <Link to="/">
+            <Logo />
+          </Link>
         </div>
-        <Card style={{ padding: 32 }}>
-          <span className="t-eyebrow">Forgot password</span>
-          <h1
-            style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 32,
-              lineHeight: 1.05,
-              letterSpacing: '-0.015em',
-              margin: '6px 0 0',
-              fontWeight: 400,
-            }}
-          >
-            Reset your password.
-          </h1>
-          <p className="t-body-md" style={{ color: 'var(--text-secondary)', marginTop: 6 }}>
+        <Card className="p-7 sm:p-8">
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Reset your password</h1>
+          <p className="mt-1 text-sm text-slate-500">
             Enter your email and we&apos;ll send you reset instructions.
           </p>
 
           {sent ? (
-            <div
-              className="mt-5"
-              style={{
-                background: 'var(--brand-50)',
-                color: 'var(--brand-700)',
-                padding: '14px',
-                borderRadius: 'var(--radius-md)',
-                fontSize: 13,
-              }}
-            >
+            <div className="mt-5 rounded-xl bg-brand-50 px-3.5 py-3 text-sm text-brand-800">
               {message}
             </div>
           ) : (
@@ -78,17 +56,16 @@ export default function ForgotPasswordPage() {
                 placeholder="you@example.com"
               />
               <Button type="submit" loading={loading} className="w-full">
-                {loading ? 'Sending…' : 'Send reset instructions'}
+                Send reset instructions
               </Button>
             </form>
           )}
 
           <Link
             to="/login"
-            className="mt-7 inline-flex items-center t-mono"
-            style={{ fontSize: 12, color: 'var(--brand-600)', gap: 6, borderBottom: 'none' }}
+            className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700"
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
+            <ArrowLeft className="h-4 w-4" />
             Back to login
           </Link>
         </Card>
