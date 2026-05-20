@@ -5,9 +5,14 @@ import { placementApi } from '../../api/placements';
 import { Badge, Button, Card, Input, Select, Spinner, Textarea } from '../../components/ui';
 import FilterBar from '../../components/FilterBar';
 
-function SubmitForm({ assessment, onSubmit }) {
-  const [score, setScore] = useState('');
-  const [remarks, setRemarks] = useState('');
+// Supervisor's evaluation form. Used for the first submission AND for editing
+// an already-submitted assessment — when `mode === 'edit'` the inputs are
+// pre-filled and a Cancel button is shown alongside Save.
+function AssessmentForm({ assessment, mode = 'submit', onSubmit, onCancel }) {
+  const [score, setScore] = useState(
+    mode === 'edit' && assessment.score != null ? String(assessment.score) : '',
+  );
+  const [remarks, setRemarks] = useState(mode === 'edit' ? assessment.remarks || '' : '');
   const [busy, setBusy] = useState(false);
 
   async function submit() {
@@ -19,6 +24,8 @@ function SubmitForm({ assessment, onSubmit }) {
     }
   }
 
+  const isEdit = mode === 'edit';
+
   return (
     <div className="mt-3 grid gap-3 border-t border-slate-100 pt-3 sm:grid-cols-2">
       <Input
@@ -29,10 +36,15 @@ function SubmitForm({ assessment, onSubmit }) {
         value={score}
         onChange={(e) => setScore(e.target.value)}
       />
-      <div className="flex items-end">
+      <div className="flex items-end gap-2">
         <Button loading={busy} disabled={score === ''} onClick={submit}>
-          Submit assessment
+          {isEdit ? 'Save changes' : 'Submit assessment'}
         </Button>
+        {isEdit && (
+          <Button variant="ghost" onClick={onCancel} disabled={busy}>
+            Cancel
+          </Button>
+        )}
       </div>
       <Textarea
         className="sm:col-span-2"
@@ -57,6 +69,7 @@ export default function AssessmentsPage() {
   const [requesting, setRequesting] = useState(false);
   const [search, setSearch] = useState('');
   const [filters, setFilters] = useState({});
+  const [editingId, setEditingId] = useState(null);
 
   const assessmentStatus = (a) => (a.submitted ? 'completed' : 'requested');
   const statusOptions = [...new Set(assessments.map(assessmentStatus))].sort();
@@ -109,6 +122,7 @@ export default function AssessmentsPage() {
     setError('');
     try {
       await assessmentApi.submit(id, data);
+      setEditingId(null);
       await load();
     } catch (err) {
       setError(err.response?.data?.message || 'Could not submit assessment.');
@@ -176,31 +190,57 @@ export default function AssessmentsPage() {
         </Card>
       ) : (
         <div className="space-y-3">
-          {visible.map((a) => (
-            <Card key={a._id} className="p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="font-semibold text-slate-800">
-                    {a.studentId?.userId
-                      ? `${a.studentId.userId.firstName} ${a.studentId.userId.lastName}`
-                      : 'Performance assessment'}
-                  </h3>
-                  {a.submitted ? (
-                    <p className="mt-0.5 text-sm text-slate-500">
-                      Score: {a.score}/100
-                      {a.remarks ? ` — ${a.remarks}` : ''}
-                    </p>
-                  ) : (
-                    <p className="mt-0.5 text-sm text-slate-500">Awaiting supervisor evaluation.</p>
-                  )}
+          {visible.map((a) => {
+            const isEditing = editingId === a._id;
+            return (
+              <Card key={a._id} className="p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-slate-800">
+                      {a.studentId?.userId
+                        ? `${a.studentId.userId.firstName} ${a.studentId.userId.lastName}`
+                        : 'Performance assessment'}
+                    </h3>
+                    {a.submitted ? (
+                      <p className="mt-0.5 text-sm text-slate-500">
+                        Score: {a.score}/100
+                        {a.remarks ? ` — ${a.remarks}` : ''}
+                      </p>
+                    ) : (
+                      <p className="mt-0.5 text-sm text-slate-500">
+                        Awaiting supervisor evaluation.
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {!isStudent && a.submitted && !isEditing && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setEditingId(a._id)}
+                      >
+                        Edit
+                      </Button>
+                    )}
+                    <Badge tone={a.submitted ? 'success' : 'warning'}>
+                      {a.submitted ? 'completed' : 'requested'}
+                    </Badge>
+                  </div>
                 </div>
-                <Badge tone={a.submitted ? 'success' : 'warning'}>
-                  {a.submitted ? 'completed' : 'requested'}
-                </Badge>
-              </div>
-              {!isStudent && !a.submitted && <SubmitForm assessment={a} onSubmit={submit} />}
-            </Card>
-          ))}
+                {!isStudent && !a.submitted && (
+                  <AssessmentForm assessment={a} mode="submit" onSubmit={submit} />
+                )}
+                {!isStudent && a.submitted && isEditing && (
+                  <AssessmentForm
+                    assessment={a}
+                    mode="edit"
+                    onSubmit={submit}
+                    onCancel={() => setEditingId(null)}
+                  />
+                )}
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>

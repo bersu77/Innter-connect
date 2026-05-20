@@ -76,7 +76,11 @@ export const listAssessments = async (req, res, next) => {
   }
 };
 
-// @route PATCH /api/assessments/:id  (supervisor) — fill & submit (immutable once submitted).
+// @route PATCH /api/assessments/:id  (supervisor) — fill & submit OR edit.
+// First call: writes the fields and flips `submitted: true` with a
+// `submittedDate` stamp. Subsequent calls overwrite the fields but keep
+// `submittedDate` intact so the original submission moment is preserved; the
+// audit trail captures every edit.
 export const submitAssessment = async (req, res, next) => {
   try {
     const { score, remarks, criteria } = req.body;
@@ -89,22 +93,21 @@ export const submitAssessment = async (req, res, next) => {
         .status(403)
         .json({ success: false, message: 'You are not the assigned supervisor' });
     }
-    if (assessment.submitted) {
-      return res
-        .status(400)
-        .json({ success: false, message: 'This assessment has already been submitted' });
-    }
+
+    const wasSubmitted = assessment.submitted;
 
     assessment.score = score;
     assessment.remarks = remarks;
     if (Array.isArray(criteria)) assessment.criteria = criteria;
-    assessment.submitted = true;
-    assessment.submittedDate = new Date();
+    if (!wasSubmitted) {
+      assessment.submitted = true;
+      assessment.submittedDate = new Date();
+    }
     await assessment.save();
 
     await logAudit({
       req,
-      action: 'ASSESSMENT_SUBMIT',
+      action: wasSubmitted ? 'ASSESSMENT_EDIT' : 'ASSESSMENT_SUBMIT',
       entityType: 'Assessment',
       entityId: assessment._id,
     });
@@ -113,8 +116,10 @@ export const submitAssessment = async (req, res, next) => {
       await notify({
         userId: student.userId,
         type: 'assessment',
-        title: 'Assessment completed',
-        message: `Your supervisor submitted your performance assessment (score: ${score}).`,
+        title: wasSubmitted ? 'Assessment updated' : 'Assessment completed',
+        message: wasSubmitted
+          ? `Your supervisor revised your performance assessment (score: ${score}).`
+          : `Your supervisor submitted your performance assessment (score: ${score}).`,
       });
     }
     res.json({ success: true, assessment });
