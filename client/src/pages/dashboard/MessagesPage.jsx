@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { placementApi } from '../../api/placements';
 import { messageApi } from '../../api/messages';
 import { Button, Card, Input, Spinner } from '../../components/ui';
+import PageHeader from '../../components/PageHeader';
 
 export default function MessagesPage() {
   const { user } = useAuth();
@@ -16,20 +18,29 @@ export default function MessagesPage() {
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
   const [threadSearch, setThreadSearch] = useState('');
+  // On mobile the layout is single-pane: 'list' shows the threads, 'thread'
+  // shows the active conversation. md+ shows both side-by-side always.
+  const [mobileView, setMobileView] = useState('list');
   const endRef = useRef(null);
 
   useEffect(() => {
     placementApi
       .list()
       .then(({ placements }) => {
-        // A thread needs both a student and a supervisor.
         const list = (placements || []).filter((p) => p.supervisorId);
         setThreads(list);
+        // Auto-select the first thread for the side-by-side desktop layout;
+        // on mobile the pane only opens after the user picks a thread.
         if (list.length) setActive(list[0]);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
+
+  function openThread(p) {
+    setActive(p);
+    setMobileView('thread');
+  }
 
   useEffect(() => {
     if (!active) return undefined;
@@ -101,14 +112,15 @@ export default function MessagesPage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Messages</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {isStudent
+      <PageHeader
+        eyebrow="Threads"
+        title="Messages"
+        lede={
+          isStudent
             ? 'Chat with the supervisor assigned to your internship.'
-            : 'Chat with the interns you supervise.'}
-        </p>
-      </div>
+            : 'Chat with the interns you supervise.'
+        }
+      />
 
       {threads.length === 0 ? (
         <Card className="p-10 text-center text-sm text-slate-400">
@@ -116,7 +128,11 @@ export default function MessagesPage() {
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-3">
-          <Card className="overflow-hidden md:col-span-1">
+          <Card
+            className={`overflow-hidden md:col-span-1 ${
+              mobileView === 'thread' ? 'hidden md:block' : ''
+            }`}
+          >
             <div className="border-b border-slate-100 p-2">
               <Input
                 value={threadSearch}
@@ -131,30 +147,88 @@ export default function MessagesPage() {
             )}
             {visibleThreads.map((p) => {
               const c = counterpart(p);
+              const isActive = active?._id === p._id;
               return (
                 <button
                   key={p._id}
-                  onClick={() => setActive(p)}
-                  className={`flex w-full flex-col border-b border-slate-50 px-4 py-3 text-left transition-colors last:border-0 hover:bg-slate-50 ${
-                    active?._id === p._id ? 'bg-brand-50' : ''
-                  }`}
+                  onClick={() => openThread(p)}
+                  aria-current={isActive ? 'true' : undefined}
+                  className="relative flex w-full flex-col px-4 py-3 text-left transition-colors last:border-0"
+                  style={{
+                    background: isActive ? 'var(--brand-50)' : 'transparent',
+                    borderBottom: '1px solid var(--border-subtle)',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isActive) e.currentTarget.style.background = 'var(--bg-subtle)';
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isActive) e.currentTarget.style.background = 'transparent';
+                  }}
                 >
-                  <span className="text-sm font-medium text-slate-800">{c.name}</span>
-                  <span className="text-xs text-slate-400">{p.internshipId?.title || 'Internship'}</span>
+                  {isActive && (
+                    <span
+                      aria-hidden
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: 10,
+                        bottom: 10,
+                        width: 2,
+                        background: 'var(--brand-500)',
+                        borderRadius: 999,
+                      }}
+                    />
+                  )}
+                  <span
+                    className="text-sm"
+                    style={{
+                      color: isActive ? 'var(--brand-700)' : 'var(--text-primary)',
+                      fontWeight: isActive ? 600 : 500,
+                    }}
+                  >
+                    {c.name}
+                  </span>
+                  <span
+                    className="text-xs"
+                    style={{
+                      color: isActive
+                        ? 'color-mix(in srgb, var(--brand-700) 80%, transparent)'
+                        : 'var(--text-tertiary)',
+                    }}
+                  >
+                    {p.internshipId?.title || 'Internship'}
+                  </span>
                 </button>
               );
             })}
           </Card>
 
-          <Card className="flex min-h-[28rem] flex-col md:col-span-2">
+          <Card
+            className={`flex min-h-[28rem] flex-col md:col-span-2 ${
+              mobileView === 'list' ? 'hidden md:flex' : ''
+            }`}
+          >
             {active &&
               (() => {
                 const c = counterpart(active);
                 return (
                   <>
-                    <div className="border-b border-slate-100 px-4 py-3">
-                      <div className="text-sm font-semibold text-slate-800">{c.name}</div>
-                      {c.username && <div className="text-xs text-slate-400">@{c.username}</div>}
+                    <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3">
+                      <button
+                        type="button"
+                        onClick={() => setMobileView('list')}
+                        className="btn btn-ghost btn-sm md:hidden shrink-0"
+                        style={{ width: 32, height: 32, padding: 0, marginLeft: -4 }}
+                        aria-label="Back to conversations"
+                      >
+                        <ArrowLeft size={16} strokeWidth={1.8} />
+                      </button>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold text-slate-800 truncate">{c.name}</div>
+                        {c.username && (
+                          <div className="text-xs text-slate-400 truncate">@{c.username}</div>
+                        )}
+                      </div>
                     </div>
                     <div className="flex-1 space-y-3 overflow-y-auto p-4">
                       {messages.length === 0 && (

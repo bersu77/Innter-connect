@@ -389,67 +389,27 @@ async function seed() {
     }
   }
 
-  // ── Notifications — 5 per active user, role-shaped copy ──
-  // Each role gets messages about THEIR workspace. The previous seed used a
-  // single student-flavoured pool ("Your application…", "Your supervisor…")
-  // for every recipient, which made companies/universities/admins see
-  // student-shaped notifications. Each role now has its own pool.
-  const ROLE_NOTES = {
-    student: [
-      ['application', 'Application update', 'The status of one of your applications has changed.'],
-      ['internship', 'New internship posted', 'A new internship matching your interests is now open.'],
-      ['placement',  'Supervisor assigned', 'A supervisor has been assigned to your internship.'],
-      ['task',       'New task assigned',   'Your supervisor has assigned you a new task.'],
-      ['assessment', 'Assessment completed', 'Your performance assessment has been submitted.'],
-      ['system',     'Welcome to InternConnect', 'Your account is ready — explore the dashboard.'],
-    ],
-    company: [
-      ['application', 'New application received', 'A student applied to one of your internships.'],
-      ['internship',  'Posting under review',     'Your internship posting is under university review.'],
-      ['placement',   'Offer accepted',           'A student accepted your offer — the placement is active.'],
-      ['system',      'Reports ready',            'This term\'s applicant pipeline report is ready to export.'],
-      ['verification','Verification approved',    'Your company\'s verification has been approved.'],
-      ['system',      'Welcome to InternConnect', 'Your company workspace is ready — post your first internship.'],
-    ],
-    supervisor: [
-      ['task',       'New submission to grade', 'A student submitted a task for your review.'],
-      ['assessment', 'Assessment requested',     'A student has requested a performance assessment.'],
-      ['message',    'New message',              'You have a new message from one of your interns.'],
-      ['placement',  'Intern assigned',          'You are now supervising a new intern.'],
-      ['task',       'Grade appeal submitted',   'A student appealed a grade — your decision is needed.'],
-      ['system',     'Welcome to InternConnect', 'Your supervisor workspace is ready — see your interns.'],
-    ],
-    university: [
-      ['verification','Student verification pending', 'A new student is awaiting academic verification.'],
-      ['application', 'Application awaiting vetting', 'A student\'s application needs your verification.'],
-      ['placement',   'Completion to validate',       'A supervisor submitted an internship completion for your validation.'],
-      ['invitation',  'Partnership response',         'A company responded to your partnership invitation.'],
-      ['system',      'Term report ready',            'This term\'s placement report is ready to generate.'],
-      ['system',      'Welcome to InternConnect',     'Your university workspace is ready — verify your students.'],
-    ],
-    admin: [
-      ['verification','Organization verification pending', 'A new organization is awaiting verification.'],
-      ['system',      'Appeal queue updated',              'New appeals have been added to the review queue.'],
-      ['system',      'Audit summary',                     'The latest 24-hour audit summary is available.'],
-      ['account',     'User account flagged',              'A user account has been flagged for review.'],
-      ['system',      'System health',                     'All services are operating normally.'],
-      ['system',      'Welcome, admin',                    'Your admin workspace is ready — review pending verifications.'],
-    ],
-  };
-  const recipientsByRole = [
-    ...students.map((s) => ({ user: s.user, role: 'student' })),
-    ...companies.map((c) => ({ user: c.mgr, role: 'company' })),
-    ...companies.map((c) => ({ user: c.sup, role: 'supervisor' })),
-    ...universities.map((u) => ({ user: u.coord, role: 'university' })),
-    { user: admin, role: 'admin' },
+  // ── Notifications — 5 per active user ──
+  const NOTE = [
+    ['application', 'Application update', 'The status of one of your applications has changed.'],
+    ['internship', 'New internship posted', 'A new internship matching your interests is now open.'],
+    ['placement', 'Supervisor assigned', 'A supervisor has been assigned to your internship.'],
+    ['task', 'New task assigned', 'Your supervisor has assigned you a new task.'],
+    ['assessment', 'Assessment completed', 'Your performance assessment has been submitted.'],
+    ['system', 'Welcome to InternConnect', 'Your account is ready — explore the dashboard.'],
   ];
-  for (let r = 0; r < recipientsByRole.length; r += 1) {
-    const { user, role } = recipientsByRole[r];
-    const pool = ROLE_NOTES[role];
+  const recipients = [
+    ...students.map((s) => s.user),
+    ...companies.map((c) => c.mgr),
+    ...companies.map((c) => c.sup),
+    ...universities.map((u) => u.coord),
+    admin,
+  ];
+  for (let r = 0; r < recipients.length; r += 1) {
     for (let n = 0; n < 5; n += 1) {
-      const [type, title, message] = pick(pool, r + n);
+      const [type, title, message] = pick(NOTE, r + n);
       await Notification.create({
-        userId: user._id, type, title, message,
+        userId: recipients[r]._id, type, title, message,
         read: n >= 3, readAt: n >= 3 ? ago(1) : undefined,
       });
     }
@@ -498,7 +458,7 @@ async function seed() {
   for (let n = 0; n < 5; n += 1) {
     await Report.create({
       type: 'audit', title: 'System-wide report', generatedBy: admin._id, filters: {},
-      payload: { title: 'System-wide report', summary: { users: recipientsByRole.length }, rows: reportRows },
+      payload: { title: 'System-wide report', summary: { users: recipients.length }, rows: reportRows },
     });
   }
 

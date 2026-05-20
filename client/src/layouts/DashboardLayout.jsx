@@ -1,6 +1,7 @@
-// DashboardLayout — shared shell for every authenticated role workspace.
-// Nav is keyed by an effective role: a company user with the 'supervisor'
-// sub-role gets the supervisor workspace, not the manager one.
+// DashboardLayout — design-system v2 shell.
+// 264px sidebar · 72px glass header · brand-tinted active nav with left bar ·
+// mobile drawer with scrim + slide-in. Role-keyed nav (a company user with the
+// 'supervisor' sub-role gets the supervisor workspace).
 import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
@@ -25,8 +26,10 @@ import {
   MessageSquare,
   UserPlus,
   Menu,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import Logo from '../components/Logo';
 import NotificationBell from '../components/NotificationBell';
 import ThemeToggle from '../components/ThemeToggle';
 
@@ -98,40 +101,43 @@ export function effectiveRole(user) {
   return type;
 }
 
-function SidebarBody({ navItems, onNavigate, onLogout }) {
+function SidebarBody({ navItems, onNavigate, onLogout, onClose }) {
   return (
     <>
-      <div className="flex h-16 items-center px-6">
-        <span className="text-lg font-semibold tracking-tight">
-          <span className="text-brand-600">Intern</span>Connect
-        </span>
+      <div className="flex items-center justify-between" style={{ padding: '0 8px 14px' }}>
+        <Logo />
+        {onClose && (
+          <button
+            onClick={onClose}
+            aria-label="Close menu"
+            className="btn btn-ghost btn-sm"
+            style={{ width: 32, padding: 0 }}
+          >
+            <X size={16} strokeWidth={1.6} />
+          </button>
+        )}
       </div>
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+      <nav
+        className="flex-1 overflow-y-auto"
+        style={{ display: 'flex', flexDirection: 'column', gap: 2, marginTop: 8 }}
+      >
         {navItems.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}
             to={to}
             end={end}
             onClick={onNavigate}
-            className={({ isActive }) =>
-              [
-                'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors duration-200',
-                isActive ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100',
-              ].join(' ')
-            }
+            className={({ isActive }) => `nav-item${isActive ? ' is-active' : ''}`}
           >
-            <Icon className="h-[18px] w-[18px]" />
-            {label}
+            <Icon size={18} strokeWidth={1.6} />
+            <span style={{ flex: 1 }}>{label}</span>
           </NavLink>
         ))}
       </nav>
-      <div className="border-t border-slate-200/70 p-3">
-        <button
-          onClick={onLogout}
-          className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition-colors duration-200 hover:bg-slate-100"
-        >
-          <LogOut className="h-[18px] w-[18px]" />
-          Log out
+      <div style={{ marginTop: 'auto', paddingTop: 14, borderTop: '1px solid var(--border-subtle)' }}>
+        <button onClick={onLogout} className="nav-item" style={{ width: '100%' }}>
+          <LogOut size={18} strokeWidth={1.6} />
+          <span>Log out</span>
         </button>
       </div>
     </>
@@ -147,6 +153,7 @@ export default function DashboardLayout() {
   const navItems = NAV_BY_ROLE[role] || NAV_BY_ROLE.student;
   const name =
     [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'there';
+  const initial = (name[0] || 'U').toUpperCase();
 
   async function handleLogout() {
     await logout();
@@ -154,54 +161,164 @@ export default function DashboardLayout() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-50 text-slate-900">
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-200/70 bg-white/80 backdrop-blur-glass md:flex">
+    <div className="flex min-h-screen" style={{ background: 'var(--bg-paper)', color: 'var(--text-primary)' }}>
+      {/* Desktop sidebar */}
+      <aside
+        className="hidden md:flex shrink-0 flex-col"
+        style={{
+          width: 'var(--sidebar-w)',
+          background: 'var(--bg-raised)',
+          borderRight: '1px solid var(--border-subtle)',
+          padding: '20px 16px',
+        }}
+      >
         <SidebarBody navItems={navItems} onLogout={handleLogout} />
       </aside>
 
+      {/* Mobile drawer */}
       {mobileOpen && (
         <div className="fixed inset-0 z-40 md:hidden">
-          <div className="absolute inset-0 bg-slate-900/40" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute left-0 top-0 flex h-full w-64 flex-col bg-white shadow-soft-lg">
+          <div
+            className="absolute inset-0"
+            onClick={() => setMobileOpen(false)}
+            style={{
+              background: 'rgba(20,17,14,.40)',
+              backdropFilter: 'blur(2px)',
+              WebkitBackdropFilter: 'blur(2px)',
+            }}
+          />
+          <aside
+            className="absolute left-0 top-0 flex h-full flex-col"
+            style={{
+              width: 280,
+              background: 'var(--bg-raised)',
+              boxShadow: 'var(--shadow-4)',
+              padding: '20px 16px',
+              animation: 'drawer-in 320ms var(--ease-soft)',
+            }}
+          >
             <SidebarBody
               navItems={navItems}
               onNavigate={() => setMobileOpen(false)}
               onLogout={handleLogout}
+              onClose={() => setMobileOpen(false)}
             />
           </aside>
+          <style>{`@keyframes drawer-in { from { transform: translateX(-12px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }`}</style>
         </div>
       )}
 
+      {/* Main column */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-16 items-center justify-between border-b border-slate-200/70 bg-white/80 px-4 backdrop-blur-glass sm:px-6">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setMobileOpen(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 md:hidden"
-              aria-label="Open menu"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-            <div className="flex flex-col leading-tight">
-              {user?.organizationName && (
-                <span className="text-sm font-semibold text-slate-700">
+        <header
+          className="flex items-center sticky top-0 z-30 px-3 sm:px-4 lg:px-6 gap-2 sm:gap-3 lg:gap-4"
+          style={{
+            height: 'var(--header-h)',
+            background: 'color-mix(in srgb, var(--bg-raised) 80%, transparent)',
+            backdropFilter: 'blur(var(--blur-md)) saturate(140%)',
+            WebkitBackdropFilter: 'blur(var(--blur-md)) saturate(140%)',
+            borderBottom: '1px solid var(--border-subtle)',
+          }}
+        >
+          <button
+            onClick={() => setMobileOpen(true)}
+            className="btn btn-ghost btn-sm md:hidden shrink-0"
+            style={{ width: 36, padding: 0 }}
+            aria-label="Open menu"
+          >
+            <Menu size={20} strokeWidth={1.6} />
+          </button>
+          <div
+            className="min-w-0 flex-1"
+            style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}
+          >
+            {user?.organizationName ? (
+              <>
+                <span
+                  className="t-heading-md truncate"
+                  style={{ maxWidth: '100%' }}
+                  title={user.organizationName}
+                >
                   {user.organizationName}
                 </span>
-              )}
-              <span className="text-xs capitalize text-slate-400">{role} workspace</span>
-            </div>
+                <span
+                  className="t-mono truncate"
+                  style={{
+                    fontSize: 10.5,
+                    letterSpacing: '0.18em',
+                    textTransform: 'uppercase',
+                    color: 'var(--text-tertiary)',
+                    marginTop: 2,
+                  }}
+                >
+                  {role} workspace
+                </span>
+              </>
+            ) : (
+              <span
+                className="t-mono truncate"
+                style={{
+                  fontSize: 11,
+                  letterSpacing: '0.18em',
+                  textTransform: 'uppercase',
+                  color: 'var(--text-tertiary)',
+                }}
+              >
+                {role} workspace
+              </span>
+            )}
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <ThemeToggle />
             <NotificationBell />
-            <span className="hidden text-sm font-medium text-slate-600 sm:block">{name}</span>
-            <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 text-sm font-semibold text-white">
-              {(name[0] || 'U').toUpperCase()}
+            <div
+              className="flex items-center gap-2 sm:gap-2.5"
+              style={{
+                paddingLeft: 8,
+                marginLeft: 2,
+                borderLeft: '1px solid var(--border-subtle)',
+                height: 36,
+              }}
+            >
+              <span
+                className="t-body-md hidden lg:inline truncate"
+                style={{ color: 'var(--text-secondary)', maxWidth: 160 }}
+                title={name}
+              >
+                {name}
+              </span>
+              <span
+                aria-hidden
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 999,
+                  background: 'var(--brand-100)',
+                  color: 'var(--brand-700)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 600,
+                  fontSize: 13,
+                  fontFamily: 'var(--font-sans)',
+                  flexShrink: 0,
+                }}
+              >
+                {initial}
+              </span>
             </div>
           </div>
         </header>
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          <Outlet />
+        <main
+          className="flex-1"
+          style={{
+            padding: 'var(--content-pad-y) var(--content-pad-x)',
+            maxWidth: '100%',
+          }}
+        >
+          <div style={{ maxWidth: 'var(--content-max)', margin: '0 auto' }}>
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

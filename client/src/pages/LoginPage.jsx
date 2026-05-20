@@ -32,19 +32,44 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12">
+    <div
+      className="flex min-h-screen items-center justify-center px-4 py-12"
+      style={{ background: 'var(--bg-paper)' }}
+    >
       <div className="w-full max-w-md">
-        <div className="mb-6 flex justify-center">
-          <Link to="/">
-            <Logo />
-          </Link>
+        <div className="mb-8 flex justify-center">
+          <Link to="/"><Logo /></Link>
         </div>
-        <Card className="p-7 sm:p-8">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">Welcome back</h1>
-          <p className="mt-1 text-sm text-slate-500">Sign in to your InternConnect account.</p>
+        <Card style={{ padding: 'clamp(20px, 5vw, 32px)' }}>
+          <span className="t-eyebrow">Sign in</span>
+          <h1
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 'clamp(28px, 7vw, 36px)',
+              lineHeight: 1.05,
+              letterSpacing: '-0.018em',
+              margin: '6px 0 0',
+              fontWeight: 400,
+            }}
+          >
+            Welcome back.
+          </h1>
+          <p className="t-body-md" style={{ color: 'var(--text-secondary)', marginTop: 6 }}>
+            Sign in to your InternConnect workspace.
+          </p>
 
           {error && (
-            <div className="mt-4 rounded-xl bg-red-50 px-3.5 py-2.5 text-sm text-red-700">
+            <div
+              className="mt-5"
+              role="alert"
+              style={{
+                background: 'var(--danger-50)',
+                color: 'var(--danger-700)',
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-md)',
+                fontSize: 13,
+              }}
+            >
               {error}
             </div>
           )}
@@ -72,30 +97,37 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => setShowPw((v) => !v)}
-                    className="text-slate-400 transition-colors hover:text-slate-600"
                     aria-label={showPw ? 'Hide password' : 'Show password'}
+                    style={{ background: 'transparent', border: 0, color: 'inherit', cursor: 'pointer' }}
                   >
                     {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 }
               />
-              <div className="mt-1.5 text-right">
+              <div className="mt-2 text-right">
                 <Link
                   to="/forgot-password"
-                  className="text-sm font-medium text-brand-600 hover:text-brand-700"
+                  className="t-mono"
+                  style={{ fontSize: 12, color: 'var(--brand-600)' }}
                 >
                   Forgot password?
                 </Link>
               </div>
             </div>
             <Button type="submit" loading={loading} className="w-full">
-              Log in
+              {loading ? 'Signing in…' : 'Log in'}
             </Button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-slate-500">
+          <p
+            className="mt-7 text-center t-body-sm"
+            style={{ color: 'var(--text-secondary)' }}
+          >
             Don&apos;t have an account?{' '}
-            <Link to="/register" className="font-semibold text-brand-600 hover:text-brand-700">
+            <Link
+              to="/register"
+              style={{ color: 'var(--brand-600)', borderBottom: 'none', fontWeight: 500 }}
+            >
               Sign up
             </Link>
           </p>

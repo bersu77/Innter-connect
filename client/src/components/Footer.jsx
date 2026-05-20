@@ -1,90 +1,105 @@
-import { Link } from 'react-router-dom'
-import { Github, Twitter, Linkedin } from 'lucide-react'
+// Public-site footer — v2 minimal sitemap on the bg-subtle surface.
+// Three short link columns + the AAU project line + a privacy/terms row.
+import { Link } from 'react-router-dom';
+import Logo from './Logo';
+
+const COLUMNS = [
+  {
+    heading: 'Product',
+    links: ['Students', 'Companies', 'Universities', 'Admins'],
+  },
+  {
+    heading: 'Resources',
+    links: ['How it works', 'Trust & security', 'Reports'],
+  },
+  {
+    heading: 'About',
+    links: ['The team', 'Open-source', 'Contact'],
+  },
+];
 
 export default function Footer() {
-  const sections = [
-    {
-      heading: 'For Students',
-      links: ['Browse Internships', 'Track Applications', 'Upload CV', 'Get Verified', 'View Offers'],
-    },
-    {
-      heading: 'For Companies',
-      links: ['Post Internships', 'Review Applications', 'Shortlist Candidates', 'Analytics Dashboard', 'Verification'],
-    },
-    {
-      heading: 'For Universities',
-      links: ['Verify Students', 'Monitor Placements', 'Assign Supervisors', 'Generate Reports', 'Audit Logs'],
-    },
-    {
-      heading: 'Company',
-      links: ['About Us', 'Careers', 'Blog', 'Help Center', 'Privacy Policy', 'Terms of Service'],
-    },
-  ]
-
   return (
-    <footer className="bg-stone-950 text-stone-400">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-10 mb-12">
-          {/* Brand */}
-          <div className="lg:col-span-2">
-            <Link to="/" className="flex items-center gap-2.5 mb-5">
-              <div className="w-8 h-8 bg-teal-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-extrabold text-sm">IC</span>
-              </div>
-              <span className="text-white font-bold text-lg">InternConnect</span>
+    <footer
+      style={{
+        background: 'var(--bg-subtle)',
+        borderTop: '1px solid var(--border-subtle)',
+      }}
+    >
+      <div
+        className="mx-auto"
+        style={{
+          maxWidth: 'var(--content-max)',
+          padding: '56px var(--content-pad-x) 32px',
+        }}
+      >
+        <div
+          className="flex flex-col lg:flex-row"
+          style={{ alignItems: 'flex-start', gap: 48 }}
+        >
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <Link to="/">
+              <Logo />
             </Link>
-            <p className="text-sm text-stone-500 leading-relaxed mb-6 max-w-xs">
-              Bridging students, universities, and companies through a transparent,
-              technology-driven internship management platform.
+            <p
+              className="t-caption"
+              style={{ marginTop: 12, maxWidth: 340, color: 'var(--text-tertiary)' }}
+            >
+              A final-year project at Addis Ababa University. Built for the institutions and
+              students it serves.
             </p>
-            <div className="flex gap-3">
-              {[
-                { Icon: Twitter, label: 'Twitter' },
-                { Icon: Linkedin, label: 'LinkedIn' },
-                { Icon: Github, label: 'GitHub' },
-              ].map(({ Icon, label }) => (
-                <a
-                  key={label}
-                  href="#"
-                  aria-label={label}
-                  className="w-9 h-9 bg-stone-800 hover:bg-stone-700 rounded-lg flex items-center justify-center transition-colors"
-                >
-                  <Icon size={15} />
-                </a>
-              ))}
-            </div>
           </div>
-
-          {/* Link Columns */}
-          {sections.map((section) => (
-            <div key={section.heading}>
-              <h3 className="text-white font-semibold text-sm mb-4">{section.heading}</h3>
-              <ul className="space-y-3">
-                {section.links.map((link) => (
-                  <li key={link}>
-                    <a href="#" className="text-sm text-stone-500 hover:text-teal-400 transition-colors">
-                      {link}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-
-        <div className="border-t border-stone-800 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-stone-600">
-            © {new Date().getFullYear()} InternConnect. All rights reserved.
-          </p>
-          <div className="flex gap-6">
-            {['Privacy', 'Terms', 'Cookie Policy'].map((item) => (
-              <a key={item} href="#" className="text-sm text-stone-600 hover:text-teal-400 transition-colors">
-                {item}
-              </a>
+          <div
+            className="grid"
+            style={{
+              gridTemplateColumns: 'repeat(3, minmax(140px, 1fr))',
+              gap: 56,
+            }}
+          >
+            {COLUMNS.map(({ heading, links }) => (
+              <div key={heading}>
+                <span className="t-eyebrow">{heading}</span>
+                <ul className="flex flex-col" style={{ gap: 8, marginTop: 10, padding: 0, listStyle: 'none' }}>
+                  {links.map((l) => (
+                    <li key={l}>
+                      <a
+                        href="#"
+                        className="t-body-sm"
+                        style={{
+                          color: 'var(--text-secondary)',
+                          borderBottom: 'none',
+                        }}
+                      >
+                        {l}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
           </div>
         </div>
+
+        <div
+          className="flex flex-col sm:flex-row"
+          style={{
+            marginTop: 32,
+            paddingTop: 18,
+            borderTop: '1px solid var(--border-subtle)',
+            gap: 8,
+            alignItems: 'center',
+          }}
+        >
+          <span className="t-caption">
+            © {new Date().getFullYear()} InternConnect · AAU School of Information Technology &amp; Engineering
+          </span>
+          <span className="t-caption" style={{ marginLeft: 'auto', display: 'flex', gap: 18 }}>
+            <a href="#" style={{ color: 'inherit', borderBottom: 'none' }}>Privacy</a>
+            <a href="#" style={{ color: 'inherit', borderBottom: 'none' }}>Terms</a>
+            <a href="#" style={{ color: 'inherit', borderBottom: 'none' }}>Status</a>
+          </span>
+        </div>
       </div>
     </footer>
-  )
+  );
 }
