@@ -23,6 +23,11 @@ export const createInternship = async (req, res, next) => {
         .status(400)
         .json({ success: false, message: 'Create your company profile before posting internships' });
     }
+    if (!company.verified) {
+      return res
+        .status(403)
+        .json({ success: false, message: 'Your company must be verified before posting internships' });
+    }
     const data = {};
     for (const field of EDITABLE) {
       if (req.body[field] !== undefined) data[field] = req.body[field];

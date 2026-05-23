@@ -34,7 +34,7 @@ const internshipSchema = new mongoose.Schema(
     locations: { type: [String], default: [] },
     requirements: { type: requirementsSchema, default: () => ({}) },
     position: { type: positionSchema, default: () => ({}) },
-    applicationDeadline: Date,
+    applicationDeadline: { type: Date, required: [true, 'Application deadline is required'] },
     postedDate: Date,
     closedDate: Date,
     totalPositions: { type: Number, default: 1 },

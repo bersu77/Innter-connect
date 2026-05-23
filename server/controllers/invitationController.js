@@ -18,6 +18,17 @@ export const sendInvitation = async (req, res, next) => {
     const company = await Company.findById(req.body.companyId);
     if (!company) return res.status(404).json({ success: false, message: 'Company not found' });
 
+    const existing = await Invitation.findOne({
+      universityId: university._id,
+      companyId: company._id,
+      status: 'sent',
+    });
+    if (existing) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'You already have a pending invitation to this company' });
+    }
+
     const invitation = await Invitation.create({
       universityId: university._id,
       companyId: company._id,
