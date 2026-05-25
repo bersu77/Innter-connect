@@ -273,6 +273,9 @@ async function phase5() {
   lines.push('');
   lines.push('Phase 5 — internship management');
 
+  // applicationDeadline is required per UC005 (the company-portal fix that
+  // landed in a8a738d). Give the test posting a deadline 30 days out.
+  const deadline = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
   const created = await api('/api/internships', {
     method: 'POST',
     token: ctx.companyToken,
@@ -283,6 +286,7 @@ async function phase5() {
       position: { type: 'onsite', duration: '3 months', paid: true, stipend: 7000 },
       tags: ['qa', 'testing'],
       status: 'active',
+      applicationDeadline: deadline,
     },
   });
   check('company can post an internship', created.status === 201 && created.json?.internship?.status === 'active');
@@ -314,7 +318,17 @@ async function phase5() {
   const companies = await api('/api/companies', { token: ctx.universityToken });
   check('companies are searchable', companies.status === 200 && Array.isArray(companies.json?.companies));
 
-  const target = companies.json?.companies?.[0];
+  // Pick a target the university hasn't already invited (a8a738d added a
+  // duplicate-pending-invitation guard; the seed pre-creates pending ones).
+  const existingInvites = await api('/api/invitations', { token: ctx.universityToken });
+  const inflightIds = new Set(
+    (existingInvites.json?.invitations || [])
+      .filter((i) => i.status === 'sent')
+      .map((i) => String(i.companyId?._id || i.companyId)),
+  );
+  const target = (companies.json?.companies || []).find(
+    (c) => !inflightIds.has(String(c._id)),
+  );
   const invite = target
     ? await api('/api/invitations', {
         method: 'POST',
@@ -353,7 +367,13 @@ async function phase6() {
   const posted = await api('/api/internships', {
     method: 'POST',
     token: ctx.companyToken,
-    body: { title: 'DevOps Intern', description: 'CI/CD and cloud infrastructure.', status: 'active', position: { type: 'remote' } },
+    body: {
+      title: 'DevOps Intern',
+      description: 'CI/CD and cloud infrastructure.',
+      status: 'active',
+      position: { type: 'remote' },
+      applicationDeadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    },
   });
   const internshipId = posted.json?.internship?._id;
 
@@ -361,6 +381,10 @@ async function phase6() {
   const uniMe = await api('/api/universities/me', { token: ctx.universityToken });
   ctx.universityId = uniMe.json?.profile?._id;
 
+  // End-to-end attachment proof: attach ALL four kinds — CV, certification,
+  // work experience, and portfolio item — verifying that every kind the
+  // student picks at apply-time round-trips into Application.attachments
+  // (not just the CV).
   const apply = await api('/api/applications', {
     method: 'POST',
     token: ctx.studentToken,
@@ -368,13 +392,19 @@ async function phase6() {
       internshipId,
       coverLetter: 'I am keen on DevOps and automation.',
       universityId: ctx.universityId,
-      selectedItems: [{ kind: 'cv' }],
+      selectedItems: [
+        { kind: 'cv' },
+        { kind: 'certification', index: 0 },
+        { kind: 'experience',    index: 0 },
+        { kind: 'portfolio',     index: 0 },
+      ],
     },
   });
   check('student can apply to an internship', apply.status === 201 && apply.json?.application?.status === 'submitted');
+  const attachKinds = new Set((apply.json?.application?.attachments || []).map((a) => a.kind));
   check(
     'an application carries the chosen profile attachments',
-    (apply.json?.application?.attachments || []).some((a) => a.kind === 'cv'),
+    ['cv', 'certification', 'experience', 'portfolio'].every((k) => attachKinds.has(k)),
   );
   ctx.applicationId = apply.json?.application?._id;
 
@@ -409,6 +439,16 @@ async function phase6() {
   check(
     'university sees applications from its students',
     uniApps.status === 200 && uniApps.json.applications.some((a) => a._id === ctx.applicationId),
+  );
+  // The verifier must see every attachment the student picked — the bug fix
+  // for "uni-sees-full-application" depends on this: cover letter + all four
+  // kinds of attachments must reach the university branch of listApplications.
+  const uniApp = (uniApps.json.applications || []).find((a) => a._id === ctx.applicationId);
+  const uniKinds = new Set((uniApp?.attachments || []).map((a) => a.kind));
+  check(
+    'university receives the student\'s cover letter and every attachment kind',
+    uniApp?.coverLetter === 'I am keen on DevOps and automation.' &&
+      ['cv', 'certification', 'experience', 'portfolio'].every((k) => uniKinds.has(k)),
   );
 
   const verify = await api(`/api/applications/${ctx.applicationId}/verify`, {
@@ -450,7 +490,12 @@ async function phase6() {
   const posted2 = await api('/api/internships', {
     method: 'POST',
     token: ctx.companyToken,
-    body: { title: 'QA Intern', description: 'Manual and automated testing.', status: 'active' },
+    body: {
+      title: 'QA Intern',
+      description: 'Manual and automated testing.',
+      status: 'active',
+      applicationDeadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    },
   });
   const apply2 = await api('/api/applications', {
     method: 'POST',
@@ -500,7 +545,12 @@ async function phase7() {
   const posted = await api('/api/internships', {
     method: 'POST',
     token: ctx.companyToken,
-    body: { title: 'Mobile Dev Intern', description: 'Build mobile apps.', status: 'active' },
+    body: {
+      title: 'Mobile Dev Intern',
+      description: 'Build mobile apps.',
+      status: 'active',
+      applicationDeadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    },
   });
   const apply = await api('/api/applications', {
     method: 'POST',
