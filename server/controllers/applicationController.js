@@ -222,6 +222,23 @@ export const getApplication = async (req, res, next) => {
     if (!application) {
       return res.status(404).json({ success: false, message: 'Application not found' });
     }
+    // Ownership check: only the applicant, the company, or the university can view.
+    let allowed = false;
+    if (req.user.userType === 'student') {
+      const student = await Student.findOne({ userId: req.user._id });
+      allowed = student && String(application.studentId?._id || application.studentId) === String(student._id);
+    } else if (req.user.userType === 'company') {
+      const company = await Company.findOne({ userId: req.user._id });
+      allowed = company && String(application.companyId) === String(company._id);
+    } else if (req.user.userType === 'university') {
+      const university = await University.findOne({ userId: req.user._id });
+      allowed = university && String(application.universityId) === String(university._id);
+    } else if (req.user.userType === 'admin') {
+      allowed = true;
+    }
+    if (!allowed) {
+      return res.status(403).json({ success: false, message: 'You do not have access to this application' });
+    }
     res.json({ success: true, application });
   } catch (err) {
     next(err);
@@ -399,6 +416,49 @@ export const respondToOffer = async (req, res, next) => {
       });
     }
     res.json({ success: true, application, placement });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @route PATCH /api/applications/:id/withdraw-offer  (company, UC017) — revoke an offer.
+export const withdrawOffer = async (req, res, next) => {
+  try {
+    const company = await Company.findOne({ userId: req.user._id });
+    const application = await Application.findById(req.params.id).populate('internshipId', 'title');
+    if (!application) {
+      return res.status(404).json({ success: false, message: 'Application not found' });
+    }
+    if (!company || String(application.companyId) !== String(company._id)) {
+      return res.status(403).json({ success: false, message: 'This is not your application' });
+    }
+    if (application.status !== 'offered') {
+      return res.status(400).json({ success: false, message: 'There is no active offer to withdraw' });
+    }
+    application.status = 'under_review';
+    application.statusHistory.push({
+      status: 'under_review',
+      changedBy: req.user._id,
+      note: 'Offer withdrawn by company',
+    });
+    await application.save();
+    await logAudit({
+      req,
+      action: 'OFFER_WITHDRAW',
+      entityType: 'Application',
+      entityId: application._id,
+    });
+    const student = await Student.findById(application.studentId);
+    if (student?.userId) {
+      await notify({
+        userId: student.userId,
+        type: 'application',
+        title: 'Offer withdrawn',
+        message: `The company withdrew its offer for "${application.internshipId?.title}".`,
+        relatedEntity: { type: 'Application', id: application._id },
+      });
+    }
+    res.json({ success: true, application });
   } catch (err) {
     next(err);
   }

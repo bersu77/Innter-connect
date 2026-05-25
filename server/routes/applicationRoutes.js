@@ -6,6 +6,7 @@ import {
   listApplications,
   getApplication,
   updateApplicationStatus,
+  withdrawOffer,
   withdrawApplication,
   respondToOffer,
   verifyApplication,
@@ -23,6 +24,7 @@ router.post(
 );
 router.get('/:id', protect, getApplication);
 router.patch('/:id/status', protect, authorize('company'), updateApplicationStatus);
+router.patch('/:id/withdraw-offer', protect, authorize('company'), withdrawOffer);
 router.patch('/:id/verify', protect, authorize('university'), verifyApplication);
 router.patch('/:id/withdraw', protect, authorize('student'), withdrawApplication);
 router.patch('/:id/respond-offer', protect, authorize('student'), respondToOffer);
