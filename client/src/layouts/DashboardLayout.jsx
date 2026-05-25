@@ -162,14 +162,19 @@ export default function DashboardLayout() {
 
   return (
     <div className="flex min-h-screen" style={{ background: 'var(--bg-paper)', color: 'var(--text-primary)' }}>
-      {/* Desktop sidebar */}
+      {/* Desktop sidebar — sticky so it stays pinned during page scroll. */}
       <aside
-        className="hidden md:flex shrink-0 flex-col"
+        className="hidden md:flex shrink-0 flex-col sticky top-0"
         style={{
           width: 'var(--sidebar-w)',
+          height: '100vh',
+          maxHeight: '100vh',
+          alignSelf: 'flex-start',
           background: 'var(--bg-raised)',
           borderRight: '1px solid var(--border-subtle)',
           padding: '20px 16px',
+          overflowY: 'auto',
+          overscrollBehavior: 'contain',
         }}
       >
         <SidebarBody navItems={navItems} onLogout={handleLogout} />
