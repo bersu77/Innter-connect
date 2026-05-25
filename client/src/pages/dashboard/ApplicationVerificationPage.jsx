@@ -47,14 +47,64 @@ function VerifyCard({ application: a, onVerify }) {
         <Badge tone={V_TONE[v.status] || 'warning'}>{v.status || 'pending'}</Badge>
       </div>
 
+      {/* Cover letter — verbatim from the application. */}
+      {a.coverLetter && (
+        <div className="mt-3 rounded-xl bg-slate-50 px-3.5 py-2.5">
+          <p className="text-xs font-medium text-slate-500">Cover letter</p>
+          <p className="mt-1 whitespace-pre-line text-sm text-slate-600">{a.coverLetter}</p>
+        </div>
+      )}
+
+      {/* Everything the student attached at apply-time — CV (if highlighted),
+          certifications, work experience, portfolio items, manual uploads.
+          Each shows a clickable link when there's a path/URL; informational
+          rows (e.g. work-experience text) render as plain bullets. */}
+      {a.attachments?.length > 0 && (
+        <div className="mt-3 rounded-xl bg-slate-50 px-3.5 py-2.5">
+          <p className="text-xs font-medium text-slate-500">
+            Submitted with this application ({a.attachments.length})
+          </p>
+          <div className="mt-1 flex flex-col gap-1">
+            {a.attachments.map((att, i) => {
+              const href = att.link || att.path;
+              const kindLabel = att.kind ? att.kind.replace(/_/g, ' ') : 'attachment';
+              return (
+                <div key={i} className="flex flex-wrap items-baseline gap-x-2 text-sm">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
+                    {kindLabel}
+                  </span>
+                  {href ? (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-brand-600 hover:underline"
+                    >
+                      📎 {att.label || att.filename || href}
+                    </a>
+                  ) : (
+                    <span className="text-slate-700">
+                      {att.label}
+                      {att.detail ? <span className="text-slate-500"> — {att.detail}</span> : null}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Profile CV — always-on identity reference for the verifier.
+          Independent of what was attached to this particular application. */}
       {a.studentId?.cv?.path && (
         <a
           href={a.studentId.cv.path}
           target="_blank"
           rel="noreferrer"
-          className="mt-2 inline-block text-sm text-brand-600 hover:underline"
+          className="mt-2 inline-block text-xs text-slate-500 hover:text-brand-600 hover:underline"
         >
-          📎 View student CV
+          📄 Profile CV ({a.studentId.cv.filename || 'résumé'})
         </a>
       )}
 
