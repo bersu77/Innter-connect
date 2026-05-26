@@ -19,6 +19,15 @@ export const applyToInternship = async (req, res, next) => {
         .status(400)
         .json({ success: false, message: 'Complete your student profile before applying' });
     }
+    // A CV is required to apply — companies must have at least the résumé to
+    // evaluate a candidate. Enforced on the server so the rule holds even if
+    // the client is bypassed.
+    if (!student.cv?.path) {
+      return res.status(400).json({
+        success: false,
+        message: 'Upload your CV on your profile page before applying to internships',
+      });
+    }
     // The student specifies which university they are enrolled at (the apply
     // form pre-fills it from their profile). That university verifies them
     // before the company may act on the application.
@@ -188,13 +197,17 @@ export const listApplications = async (req, res, next) => {
     if (req.user.userType === 'university') {
       const university = await University.findOne({ userId: req.user._id });
       if (!university) return res.json({ success: true, applications: [] });
+      // The verifier sees the FULL student profile (no `select` narrowing) —
+      // the page renders an expandable "Student profile" panel with every
+      // field the student filled in: major, GPA, skills, interests, languages,
+      // certifications, experience, portfolio, CV. This is the same data the
+      // student themselves see on /dashboard/profile.
       const applications = await Application.find({ universityId: university._id })
         .populate('internshipId', 'title')
         .populate('companyId', 'name')
         .populate({
           path: 'studentId',
-          select: 'major gpa cv userId',
-          populate: { path: 'userId', select: 'firstName lastName email' },
+          populate: { path: 'userId', select: 'firstName lastName email username' },
         })
         .sort('-submittedAt');
       return res.json({ success: true, applications });

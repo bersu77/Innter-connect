@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { MapPin, Calendar, Briefcase, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { internshipApi } from '../../api/internships';
@@ -101,6 +101,10 @@ export default function InternshipDetailPage() {
   const req = internship.requirements || {};
   const pos = internship.position || {};
   const canApply = role === 'student' && internship.status === 'active';
+  // Students must have a CV on file before they can apply. Server enforces
+  // this too (applicationController), so this client gate is just for a
+  // clearer UI message + Apply-disabled state.
+  const hasCv = !!profile?.cv?.path;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -195,6 +199,25 @@ export default function InternshipDetailPage() {
               {applyMessage.text}
             </div>
           )}
+          {!applied && !hasCv && (
+            <div className="mt-3 rounded-xl bg-amber-50 px-3.5 py-3 text-sm">
+              <p className="font-semibold text-amber-800">
+                Upload your CV before you can apply.
+              </p>
+              <p className="mt-1 text-amber-800/80">
+                Companies need at least your résumé to evaluate your application.
+                Add it on your{' '}
+                <Link
+                  to="/dashboard/profile"
+                  className="font-semibold text-brand-600 hover:underline"
+                >
+                  profile page
+                </Link>
+                , then come back here.
+              </p>
+            </div>
+          )}
+
           {!applied && (
             <>
               <Select
@@ -240,7 +263,13 @@ export default function InternshipDetailPage() {
                 />
               </div>
 
-              <Button className="mt-3" loading={applying} onClick={handleApply}>
+              <Button
+                className="mt-3"
+                loading={applying}
+                onClick={handleApply}
+                disabled={!hasCv}
+                title={!hasCv ? 'Upload your CV on your profile to apply' : undefined}
+              >
                 Submit application
               </Button>
             </>
