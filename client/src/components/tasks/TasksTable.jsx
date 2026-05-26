@@ -33,7 +33,7 @@ function requiredKinds(task) {
 }
 
 // Compare two tasks on a sort key.
-function sorter(key) {
+function sorter(key, isStudent) {
   return (a, b) => {
     let av;
     let bv;
@@ -59,8 +59,8 @@ function sorter(key) {
         bv = b.submission?.submittedAt ? 1 : 0;
         return av - bv;
       case 'person': {
-        const ap = personName(a);
-        const bp = personName(b);
+        const ap = personName(a, isStudent);
+        const bp = personName(b, isStudent);
         return ap.localeCompare(bp);
       }
       default:
@@ -69,15 +69,22 @@ function sorter(key) {
   };
 }
 
-function personName(t) {
-  // Role-agnostic — only one of these is populated per task. The page
-  // chooses which column header to render; the underlying name string
-  // is the same lookup either way.
+// Render the counterpart name on a task — for a STUDENT viewer that's the
+// supervisor who set the task (assignedBy); for a SUPERVISOR viewer that's
+// the intern the task belongs to (studentId.userId). Both fields can be
+// populated on the same task doc (a student is BOTH the student AND has an
+// assignedBy supervisor), so we MUST key off the viewer's role rather than
+// "whichever populates" — picking the wrong one is exactly the bug that put
+// the student's own name in the "Assigned by" column.
+function personName(t, isStudent) {
+  if (isStudent) {
+    if (t.assignedBy) {
+      return `${t.assignedBy.firstName || ''} ${t.assignedBy.lastName || ''}`.trim();
+    }
+    return '';
+  }
   if (t.studentId?.userId) {
     return `${t.studentId.userId.firstName || ''} ${t.studentId.userId.lastName || ''}`.trim();
-  }
-  if (t.assignedBy) {
-    return `${t.assignedBy.firstName || ''} ${t.assignedBy.lastName || ''}`.trim();
   }
   return '';
 }
@@ -185,7 +192,7 @@ export default function TasksTable({
 
   const sorted = useMemo(() => {
     if (!sort.key) return tasks;
-    const cmp = sorter(sort.key);
+    const cmp = sorter(sort.key, isStudent);
     return [...tasks].sort((a, b) => cmp(a, b) * sort.dir);
   }, [tasks, sort]);
 
@@ -323,8 +330,11 @@ export default function TasksTable({
                         maxWidth: 160,
                       }}
                     >
-                      <span className="truncate inline-block w-full" title={personName(task)}>
-                        {personName(task) || '—'}
+                      <span
+                        className="truncate inline-block w-full"
+                        title={personName(task, isStudent)}
+                      >
+                        {personName(task, isStudent) || '—'}
                       </span>
                     </td>
                     <td style={{ padding: '14px' }}>
@@ -426,7 +436,9 @@ export default function TasksTable({
               >
                 <span>{fmtDate(task.deadline)}</span>
                 <span>{task.gradedAt ? `${task.score} / ${max}` : `— / ${max}`}</span>
-                {personName(task) && <span className="truncate">{personName(task)}</span>}
+                {personName(task, isStudent) && (
+                  <span className="truncate">{personName(task, isStudent)}</span>
+                )}
               </div>
             </button>
           );
