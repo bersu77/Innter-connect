@@ -212,7 +212,7 @@ export const updateProgress = async (req, res, next) => {
 // @route PATCH /api/tasks/:id/grade  (supervisor) — award a score and leave feedback.
 export const gradeTask = async (req, res, next) => {
   try {
-    const { score, feedback } = req.body;
+    const { score, feedback, rubric } = req.body;
     const task = await Task.findById(req.params.id).populate({
       path: 'studentId',
       select: 'userId',
@@ -226,7 +226,49 @@ export const gradeTask = async (req, res, next) => {
         .status(403)
         .json({ success: false, message: 'Only the placement supervisor can grade this task' });
     }
-    if (score !== undefined && score !== '') {
+
+    // Two grading modes, exactly one in effect per request.
+    //   • Rubric  — array of {criterion, maxScore, score} whose maxScores
+    //               sum to exactly 100. task.score is the sum of scores;
+    //               task.maxScore is forced to 100.
+    //   • Legacy  — a single numeric score 0..task.maxScore (old behavior
+    //               kept for callers that don't send a rubric).
+    if (Array.isArray(rubric) && rubric.length > 0) {
+      const clean = [];
+      for (const row of rubric) {
+        const criterion = String(row?.criterion || '').trim();
+        const rowMax = Number(row?.maxScore);
+        const rowScore = Number(row?.score);
+        if (!criterion) {
+          return res
+            .status(400)
+            .json({ success: false, message: 'Every rubric row needs a criterion name' });
+        }
+        if (!Number.isFinite(rowMax) || rowMax <= 0 || rowMax > 100) {
+          return res.status(400).json({
+            success: false,
+            message: `Invalid max for "${criterion}" — must be 1..100`,
+          });
+        }
+        if (!Number.isFinite(rowScore) || rowScore < 0 || rowScore > rowMax) {
+          return res.status(400).json({
+            success: false,
+            message: `Score for "${criterion}" must be between 0 and ${rowMax}`,
+          });
+        }
+        clean.push({ criterion, maxScore: rowMax, score: rowScore });
+      }
+      const totalMax = clean.reduce((a, r) => a + r.maxScore, 0);
+      if (totalMax !== 100) {
+        return res.status(400).json({
+          success: false,
+          message: `Rubric max scores must sum to 100 (got ${totalMax})`,
+        });
+      }
+      task.rubric = clean;
+      task.score = clean.reduce((a, r) => a + r.score, 0);
+      task.maxScore = 100;
+    } else if (score !== undefined && score !== '') {
       const numeric = Number(score);
       if (Number.isNaN(numeric) || numeric < 0 || numeric > task.maxScore) {
         return res
@@ -234,6 +276,8 @@ export const gradeTask = async (req, res, next) => {
           .json({ success: false, message: `Score must be between 0 and ${task.maxScore}` });
       }
       task.score = numeric;
+      // A flat score replaces any previous rubric — explicit grader intent.
+      task.rubric = [];
     }
     if (feedback !== undefined) task.feedback = feedback;
     task.gradedAt = new Date();

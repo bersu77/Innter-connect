@@ -6,8 +6,13 @@ export const taskApi = {
   create: (data) => client.post('/tasks', data).then((r) => r.data),
   updateProgress: (id, status, progressNote) =>
     client.patch(`/tasks/${id}/progress`, { status, progressNote }).then((r) => r.data),
-  grade: (id, score, feedback) =>
-    client.patch(`/tasks/${id}/grade`, { score, feedback }).then((r) => r.data),
+  // Two call shapes — pass `rubric: [{ criterion, maxScore, score }, …]`
+  // for rubric-based grading (maxScore sum must equal 100), or pass a flat
+  // numeric `score` for legacy single-number grading. Server validates either.
+  grade: (id, { score, feedback, rubric } = {}) =>
+    client
+      .patch(`/tasks/${id}/grade`, { score, feedback, rubric })
+      .then((r) => r.data),
   // Student appeals a task grade (with optional supporting documents);
   // the supervisor resolves it (optionally re-scoring).
   appeal: (id, reason, documents = []) => {

@@ -905,6 +905,76 @@ async function phase8() {
       resolveAppeal.json?.task?.score === 75,
   );
 
+  // Rubric grading — supervisor assigns a fresh task on this placement, then
+  // grades it across multiple weighted criteria whose maxScores must sum to
+  // 100. Verifies the round-trip: rubric array reaches the DB and
+  // task.score = sum of awarded.
+  const rubricTaskRes = await api('/api/tasks', {
+    method: 'POST',
+    token: ctx.supervisorToken,
+    body: {
+      placementId: ctx.placementId,
+      title: 'Rubric-graded mini-project',
+      description: 'Test of the rubric grading flow.',
+    },
+  });
+  const rubricTaskId = rubricTaskRes.json?.task?._id;
+  check('rubric test task created', rubricTaskRes.status === 201 && !!rubricTaskId);
+
+  // Sum != 100 → 400.
+  const bad = await api(`/api/tasks/${rubricTaskId}/grade`, {
+    method: 'PATCH',
+    token: ctx.supervisorToken,
+    body: {
+      rubric: [
+        { criterion: 'Accuracy', maxScore: 50, score: 40 },
+        { criterion: 'Effort',   maxScore: 30, score: 20 },
+        // missing 20 → totals 80
+      ],
+    },
+  });
+  check(
+    'rubric grade with maxScore != 100 is rejected',
+    bad.status === 400 && /sum to 100/i.test(bad.json?.message || ''),
+  );
+
+  // Valid rubric — four criteria, maxScores sum to 100.
+  const good = await api(`/api/tasks/${rubricTaskId}/grade`, {
+    method: 'PATCH',
+    token: ctx.supervisorToken,
+    body: {
+      rubric: [
+        { criterion: 'Understanding of the task', maxScore: 25, score: 22 },
+        { criterion: 'Accuracy / correctness',    maxScore: 30, score: 28 },
+        { criterion: 'Depth / quality of work',   maxScore: 25, score: 20 },
+        { criterion: 'Timely delivery',           maxScore: 20, score: 18 },
+      ],
+      feedback: 'Solid work — communication could be sharper.',
+    },
+  });
+  const t = good.json?.task;
+  check(
+    'rubric grade saves + computes total score',
+    good.status === 200 &&
+      Array.isArray(t?.rubric) && t.rubric.length === 4 &&
+      t.score === 22 + 28 + 20 + 18 && // 88
+      t.maxScore === 100 &&
+      !!t.gradedAt,
+  );
+
+  // A score on a row outside [0, maxScore] is rejected (e.g. 31 on a 30-max).
+  const overShoot = await api(`/api/tasks/${rubricTaskId}/grade`, {
+    method: 'PATCH',
+    token: ctx.supervisorToken,
+    body: {
+      rubric: [
+        { criterion: 'X', maxScore: 30, score: 31 },
+        { criterion: 'Y', maxScore: 70, score: 50 },
+      ],
+    },
+  });
+  check('rubric row score above its max is rejected', overShoot.status === 400);
+
   const reqAssessment = await api('/api/assessments', {
     method: 'POST',
     token: ctx.studentToken,
