@@ -30,6 +30,8 @@ import MessagesPage from './pages/dashboard/MessagesPage'
 import AppealsPage from './pages/dashboard/AppealsPage'
 import ApplicationVerificationPage from './pages/dashboard/ApplicationVerificationPage'
 import NotFoundPage from './pages/NotFoundPage'
+import PublicInternshipsPage from './pages/PublicInternshipsPage'
+import PublicInternshipDetailPage from './pages/PublicInternshipDetailPage'
 
 function App() {
   return (
@@ -50,6 +52,29 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+
+          {/* Public internship browse — no login required. Apply CTA redirects
+              into the dashboard apply flow (and to /login first if needed). */}
+          <Route
+            path="/internships"
+            element={
+              <>
+                <Navbar />
+                <PublicInternshipsPage />
+                <Footer />
+              </>
+            }
+          />
+          <Route
+            path="/internships/:id"
+            element={
+              <>
+                <Navbar />
+                <PublicInternshipDetailPage />
+                <Footer />
+              </>
+            }
+          />
 
           {/* ── Authenticated workspace ── */}
           <Route

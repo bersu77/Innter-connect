@@ -84,6 +84,9 @@ export const listMyInternships = async (req, res, next) => {
 };
 
 // @route GET /api/internships/:id  — detail (increments viewCount).
+// Public — anyone can read an ACTIVE posting. Non-active postings (draft,
+// closed, archived) are visible only to the owning company manager and to
+// admins; everyone else gets a 404 so the posting's existence is hidden.
 export const getInternship = async (req, res, next) => {
   try {
     const internship = await Internship.findByIdAndUpdate(
@@ -93,6 +96,16 @@ export const getInternship = async (req, res, next) => {
     ).populate('companyId', 'name city country industry logo verified website description');
     if (!internship) {
       return res.status(404).json({ success: false, message: 'Internship not found' });
+    }
+    if (internship.status !== 'active') {
+      const u = req.user;
+      const isAdmin = u?.userType === 'admin';
+      const isOwner =
+        u?.userType === 'company' &&
+        String(u.companyId || '') === String(internship.companyId?._id || internship.companyId);
+      if (!isAdmin && !isOwner) {
+        return res.status(404).json({ success: false, message: 'Internship not found' });
+      }
     }
     res.json({ success: true, internship });
   } catch (err) {

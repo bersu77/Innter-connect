@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { protect, authorize } from '../middleware/auth.js';
+import { protect, softProtect, authorize } from '../middleware/auth.js';
 import {
   createInternship,
   listInternships,
@@ -11,10 +11,14 @@ import {
 
 const router = Router();
 
-router.get('/', protect, listInternships);
+// Public browse — anyone (logged in or out) can list and view active
+// internships. softProtect attaches req.user when a token is present so the
+// controller can still serve non-active postings to the owning company or an
+// admin; anonymous callers only see status:'active'.
+router.get('/', softProtect, listInternships);
 router.get('/mine', protect, authorize('company'), listMyInternships);
 router.post('/', protect, authorize('company'), createInternship);
-router.get('/:id', protect, getInternship);
+router.get('/:id', softProtect, getInternship);
 router.put('/:id', protect, authorize('company'), updateInternship);
 router.patch('/:id/status', protect, authorize('company'), updateStatus);
 

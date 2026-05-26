@@ -7,9 +7,10 @@ import Logo from './Logo';
 import Button from './ui/Button';
 
 const NAV_LINKS = [
-  { label: 'For students',     href: '#for-students' },
-  { label: 'For companies',    href: '#for-companies' },
-  { label: 'For universities', href: '#for-universities' },
+  { label: 'Browse internships', to:   '/internships' },
+  { label: 'For students',       href: '#for-students' },
+  { label: 'For companies',      href: '#for-companies' },
+  { label: 'For universities',   href: '#for-universities' },
 ];
 
 export default function Navbar() {
@@ -46,22 +47,38 @@ export default function Navbar() {
         </Link>
 
         <div className="hidden lg:flex items-center" style={{ gap: 22, marginLeft: 22 }}>
-          {NAV_LINKS.map((l) => (
-            <a
-              key={l.label}
-              href={l.href}
-              className="t-body-sm"
-              style={{
-                color: 'var(--text-secondary)',
-                borderBottom: '1px solid transparent',
-                transition: 'color var(--dur-fast) var(--ease-emphasis)',
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--text-primary)')}
-              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--text-secondary)')}
-            >
-              {l.label}
-            </a>
-          ))}
+          {NAV_LINKS.map((l) => {
+            const linkStyle = {
+              color: 'var(--text-secondary)',
+              borderBottom: '1px solid transparent',
+              transition: 'color var(--dur-fast) var(--ease-emphasis)',
+            };
+            const onEnter = (e) => (e.currentTarget.style.color = 'var(--text-primary)');
+            const onLeave = (e) => (e.currentTarget.style.color = 'var(--text-secondary)');
+            return l.to ? (
+              <Link
+                key={l.label}
+                to={l.to}
+                className="t-body-sm"
+                style={linkStyle}
+                onMouseEnter={onEnter}
+                onMouseLeave={onLeave}
+              >
+                {l.label}
+              </Link>
+            ) : (
+              <a
+                key={l.label}
+                href={l.href}
+                className="t-body-sm"
+                style={linkStyle}
+                onMouseEnter={onEnter}
+                onMouseLeave={onLeave}
+              >
+                {l.label}
+              </a>
+            );
+          })}
         </div>
 
         <div className="hidden lg:flex items-center" style={{ marginLeft: 'auto', gap: 8 }}>
@@ -93,16 +110,27 @@ export default function Navbar() {
           }}
         >
           <div className="flex flex-col" style={{ gap: 2, marginBottom: 14 }}>
-            {NAV_LINKS.map((l) => (
-              <a
-                key={l.label}
-                href={l.href}
-                onClick={() => setMenuOpen(false)}
-                className="nav-item"
-              >
-                {l.label}
-              </a>
-            ))}
+            {NAV_LINKS.map((l) =>
+              l.to ? (
+                <Link
+                  key={l.label}
+                  to={l.to}
+                  onClick={() => setMenuOpen(false)}
+                  className="nav-item"
+                >
+                  {l.label}
+                </Link>
+              ) : (
+                <a
+                  key={l.label}
+                  href={l.href}
+                  onClick={() => setMenuOpen(false)}
+                  className="nav-item"
+                >
+                  {l.label}
+                </a>
+              ),
+            )}
           </div>
           <div className="flex" style={{ gap: 10 }}>
             <Link to="/login" className="flex-1" onClick={() => setMenuOpen(false)}>

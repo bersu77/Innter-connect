@@ -332,8 +332,26 @@ async function phase5() {
   const browse = await api('/api/internships', { token: ctx.studentToken });
   check('student can browse active internships', browse.status === 200 && Array.isArray(browse.json?.internships));
 
+  // Public browse — same endpoint without a token. softProtect lets it
+  // through; the controller only returns status:'active' to anonymous
+  // callers, same as the authenticated browse above.
+  const anonBrowse = await api('/api/internships');
+  check(
+    'anonymous browse returns active internships',
+    anonBrowse.status === 200 &&
+      Array.isArray(anonBrowse.json?.internships) &&
+      anonBrowse.json.internships.every((i) => i.status === 'active'),
+  );
+
   const detail = await api(`/api/internships/${ctx.internshipId}`, { token: ctx.studentToken });
   check('internship detail loads & counts a view', detail.status === 200 && detail.json?.internship?.viewCount >= 1);
+
+  // Public detail — no token, on the same active internship.
+  const anonDetail = await api(`/api/internships/${ctx.internshipId}`);
+  check(
+    'anonymous detail returns an active internship',
+    anonDetail.status === 200 && anonDetail.json?.internship?.status === 'active',
+  );
 
   const statusChange = await api(`/api/internships/${ctx.internshipId}/status`, {
     method: 'PATCH',
