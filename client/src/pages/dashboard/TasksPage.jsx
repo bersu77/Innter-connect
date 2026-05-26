@@ -20,9 +20,14 @@ import PageHeader from '../../components/PageHeader';
 import TasksTable from '../../components/tasks/TasksTable';
 import TaskDetailsModal from '../../components/tasks/TaskDetailsModal';
 
+// Assignment scope — exactly one of three options is in effect:
+//   one        → a single placement (placementId)
+//   internship → every intern the supervisor mentors on a given internship
+//   all        → every intern the supervisor mentors, across all internships
 const EMPTY_FORM = {
+  scope: 'one',
   placementId: '',
-  assignToAll: false,
+  internshipId: '',
   title: '',
   description: '',
   deadline: '',
@@ -129,17 +134,34 @@ export default function TasksPage() {
   async function createTask(e) {
     e.preventDefault();
     setError('');
-    if (!form.title || (!form.assignToAll && !form.placementId)) {
-      setError('A title and a placement (or "assign to all my interns") are required.');
+    if (!form.title) {
+      setError('A task title is required.');
+      return;
+    }
+    if (form.scope === 'one' && !form.placementId) {
+      setError('Pick which intern to assign this task to.');
+      return;
+    }
+    if (form.scope === 'internship' && !form.internshipId) {
+      setError('Pick which internship to assign all its interns.');
       return;
     }
     setCreating(true);
     try {
-      await taskApi.create({
+      // Translate the scope choice into the API contract.
+      const body = {
         ...form,
         deadline: form.deadline || undefined,
         maxScore: Number(form.maxScore) || 100,
-      });
+        assignToAll: form.scope === 'all',
+        assignToInternship: form.scope === 'internship',
+      };
+      // Strip fields the server doesn't expect for the chosen scope, so a
+      // stale placementId doesn't get sent on an "all interns" assign.
+      if (form.scope !== 'one') delete body.placementId;
+      if (form.scope !== 'internship') delete body.internshipId;
+      delete body.scope;
+      await taskApi.create(body);
       setForm(EMPTY_FORM);
       setFormOpen(false);
       await load();
@@ -224,28 +246,88 @@ export default function TasksPage() {
           </h2>
           <form onSubmit={createTask} className="grid gap-4 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <label
-                className="flex items-center gap-2 t-body-md"
-                style={{ color: 'var(--text-secondary)', fontWeight: 500 }}
+              {/* Scope picker — radio: one intern / one internship / all interns. */}
+              <p
+                className="t-label"
+                style={{ color: 'var(--text-secondary)', marginBottom: 6 }}
               >
-                <input
-                  type="checkbox"
-                  checked={form.assignToAll}
-                  onChange={toggle('assignToAll')}
-                  className="h-4 w-4 rounded"
-                />
-                Assign to all my current interns
-              </label>
-              {form.assignToAll ? (
-                <p
-                  className="mt-1.5 t-caption"
-                  style={{ color: 'var(--text-tertiary)' }}
-                >
-                  Every active intern gets their own copy, numbered in their own sequence.
-                </p>
-              ) : (
+                Assign to
+              </p>
+              <div className="flex flex-col gap-2">
+                {[
+                  {
+                    id: 'one',
+                    label: 'One intern',
+                    hint: 'Pick a single placement you supervise.',
+                  },
+                  {
+                    id: 'internship',
+                    label: 'Every intern on a given internship',
+                    hint:
+                      'All of your interns under that internship get their own copy — numbered in each student\'s own sequence.',
+                  },
+                  {
+                    id: 'all',
+                    label: 'All my current interns',
+                    hint:
+                      'Every active intern you supervise, across every internship.',
+                  },
+                ].map((opt) => {
+                  const active = form.scope === opt.id;
+                  return (
+                    <label
+                      key={opt.id}
+                      className="flex cursor-pointer items-start gap-3 rounded-md p-3"
+                      style={{
+                        background: active ? 'var(--brand-50)' : 'var(--bg-subtle)',
+                        boxShadow: active
+                          ? '0 0 0 1px var(--brand-500)'
+                          : 'inset 0 0 0 1px var(--border-subtle)',
+                      }}
+                    >
+                      <input
+                        type="radio"
+                        name="task-scope"
+                        value={opt.id}
+                        checked={active}
+                        onChange={() =>
+                          setForm((f) => ({
+                            ...f,
+                            scope: opt.id,
+                            // Clear the side that no longer applies, so a
+                            // stale value can't be submitted.
+                            placementId: opt.id === 'one' ? f.placementId : '',
+                            internshipId: opt.id === 'internship' ? f.internshipId : '',
+                          }))
+                        }
+                        className="mt-1 h-4 w-4 shrink-0"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span
+                          className="t-body-md block"
+                          style={{
+                            fontWeight: 500,
+                            color: active ? 'var(--brand-700)' : 'var(--text-primary)',
+                          }}
+                        >
+                          {opt.label}
+                        </span>
+                        <span
+                          className="t-caption block"
+                          style={{ color: 'var(--text-secondary)' }}
+                        >
+                          {opt.hint}
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+
+              {/* Scope-specific selector. */}
+              {form.scope === 'one' && (
                 <Select
-                  className="mt-2"
+                  className="mt-3"
                   label="Placement"
                   value={form.placementId}
                   onChange={set('placementId')}
@@ -260,6 +342,48 @@ export default function TasksPage() {
                     </option>
                   ))}
                 </Select>
+              )}
+              {form.scope === 'internship' && (() => {
+                // Distinct internships across the supervisor's placements,
+                // with a count of how many interns each one carries — handy
+                // so the supervisor sees "Frontend Internship (12 interns)".
+                const byId = new Map();
+                for (const p of placements) {
+                  const id = p.internshipId?._id || p.internshipId;
+                  if (!id) continue;
+                  const cur = byId.get(String(id)) || {
+                    id,
+                    title: p.internshipId?.title || 'Internship',
+                    count: 0,
+                  };
+                  cur.count += 1;
+                  byId.set(String(id), cur);
+                }
+                const internships = Array.from(byId.values());
+                return (
+                  <Select
+                    className="mt-3"
+                    label="Internship"
+                    value={form.internshipId}
+                    onChange={set('internshipId')}
+                  >
+                    <option value="">Select an internship</option>
+                    {internships.map((it) => (
+                      <option key={it.id} value={it.id}>
+                        {it.title} — {it.count} {it.count === 1 ? 'intern' : 'interns'}
+                      </option>
+                    ))}
+                  </Select>
+                );
+              })()}
+              {form.scope === 'all' && (
+                <p
+                  className="mt-3 t-caption"
+                  style={{ color: 'var(--text-tertiary)' }}
+                >
+                  {placements.length} {placements.length === 1 ? 'intern' : 'interns'} will receive
+                  their own copy.
+                </p>
               )}
             </div>
             <Input

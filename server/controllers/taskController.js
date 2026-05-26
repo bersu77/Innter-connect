@@ -47,8 +47,13 @@ export const createTask = async (req, res, next) => {
       note: truthy(req.body.requireNote),
     };
 
-    // Resolve the target placement(s): one selected placement, or every active
-    // intern the supervisor currently has.
+    // Resolve the target placement(s). Three scopes, in priority order:
+    //   1. assignToAll        → every active intern the supervisor mentors
+    //                           (across every internship)
+    //   2. assignToInternship → every active intern THIS supervisor mentors
+    //                           under the given internshipId (e.g. all 20
+    //                           interns on internship X)
+    //   3. (default)          → a single placement by placementId
     let placements;
     if (truthy(req.body.assignToAll)) {
       placements = await Placement.find({
@@ -59,6 +64,23 @@ export const createTask = async (req, res, next) => {
         return res
           .status(400)
           .json({ success: false, message: 'You have no active interns to assign a task to' });
+      }
+    } else if (truthy(req.body.assignToInternship)) {
+      if (!req.body.internshipId) {
+        return res
+          .status(400)
+          .json({ success: false, message: 'Select an internship to assign all its interns' });
+      }
+      placements = await Placement.find({
+        supervisorId: req.user._id,
+        internshipId: req.body.internshipId,
+        status: { $in: ['pending', 'active'] },
+      }).populate('studentId', 'userId');
+      if (!placements.length) {
+        return res.status(400).json({
+          success: false,
+          message: 'You have no active interns on that internship',
+        });
       }
     } else {
       if (!req.body.placementId) {
