@@ -20,6 +20,17 @@ export const studentApi = {
   },
   removePortfolioItem: (index) =>
     client.delete(`/students/me/portfolio/${index}`).then((r) => r.data),
+  // Academic documents — always file-backed. Each has a category
+  // (transcript, recommendation_letter, certificate, id_card, …) + a label.
+  addAcademicDocument: ({ file, category, name }) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    if (category) fd.append('category', category);
+    if (name) fd.append('name', name);
+    return client.post('/students/me/documents', fd).then((r) => r.data);
+  },
+  removeAcademicDocument: (index) =>
+    client.delete(`/students/me/documents/${index}`).then((r) => r.data),
 };
 
 export const companyApi = {

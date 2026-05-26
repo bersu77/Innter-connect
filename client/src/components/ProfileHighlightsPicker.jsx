@@ -20,6 +20,7 @@ import {
   Briefcase,
   FileText,
   FolderOpen,
+  GraduationCap,
   X,
   Check,
   Plus,
@@ -53,12 +54,18 @@ const KIND_META = {
     addLabel: 'Add a portfolio project',
     icon: FolderOpen,
   },
+  document: {
+    label: 'Academic document',
+    plural: 'Academic documents',
+    addLabel: 'Add an academic document',
+    icon: GraduationCap,
+  },
 };
-const ORDER = ['cv', 'certification', 'experience', 'portfolio'];
+const ORDER = ['cv', 'certification', 'experience', 'portfolio', 'document'];
 
 // Map the student's profile into a per-kind item list used by the picker.
 function getItems(profile) {
-  const out = { cv: [], certification: [], experience: [], portfolio: [] };
+  const out = { cv: [], certification: [], experience: [], portfolio: [], document: [] };
   if (profile?.cv?.path) {
     out.cv.push({
       kind: 'cv',
@@ -94,6 +101,15 @@ function getItems(profile) {
       key: `portfolio:${i}`,
       title: p.title || 'Portfolio item',
       detail: p.link || p.filename || null,
+    });
+  });
+  (profile?.academicDocuments || []).forEach((d, i) => {
+    out.document.push({
+      kind: 'document',
+      index: i,
+      key: `document:${i}`,
+      title: d.name || d.filename || 'Academic document',
+      detail: (d.category || 'other').replace(/_/g, ' '),
     });
   });
   return out;

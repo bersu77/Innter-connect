@@ -45,6 +45,22 @@ const portfolioSchema = new mongoose.Schema(
   { _id: false },
 );
 
+// An academic document — transcript, recommendation letter, certificate, etc.
+// Always file-backed (no "link only" option, unlike portfolio items): the point
+// is to keep a copy on file for the verifier and the company.
+const academicDocumentSchema = new mongoose.Schema(
+  {
+    // Free-form category so the schema doesn't need to change every time a
+    // new doc type is introduced. Client offers a dropdown of common values.
+    category: { type: String, default: 'other' },
+    name: String,
+    filename: String,
+    path: String,
+    uploadedAt: { type: Date, default: Date.now },
+  },
+  { _id: false },
+);
+
 const studentSchema = new mongoose.Schema(
   {
     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, unique: true },
@@ -67,6 +83,7 @@ const studentSchema = new mongoose.Schema(
     certifications: { type: [certificationSchema], default: [] },
     experience: { type: [experienceSchema], default: [] },
     portfolio: { type: [portfolioSchema], default: [] },
+    academicDocuments: { type: [academicDocumentSchema], default: [] },
     availableSince: Date,
     desiredLocations: { type: [String], default: [] },
     workAuthorization: { type: String, default: '' },

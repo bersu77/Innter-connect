@@ -191,6 +191,143 @@ function PortfolioManager({ items, setItems, onMessage }) {
   );
 }
 
+// Academic documents — uploads only (no link-only option). Categorised so
+// the verifier and the company know what they're looking at.
+const DOC_CATEGORIES = [
+  { id: 'transcript',            label: 'Academic transcript' },
+  { id: 'recommendation_letter', label: 'Recommendation letter' },
+  { id: 'certificate',           label: 'Degree / completion certificate' },
+  { id: 'id_card',               label: 'Student ID card' },
+  { id: 'cover_letter_sample',   label: 'Cover-letter sample' },
+  { id: 'other',                 label: 'Other' },
+];
+
+function AcademicDocumentsManager({ items, setItems, onMessage }) {
+  const [category, setCategory] = useState('transcript');
+  const [name, setName] = useState('');
+  const [file, setFile] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef(null);
+
+  async function add() {
+    if (!file) {
+      onMessage({ type: 'error', text: 'Pick a file to upload.' });
+      return;
+    }
+    setBusy(true);
+    try {
+      const { academicDocuments } = await studentApi.addAcademicDocument({
+        file,
+        category,
+        name: name.trim() || undefined,
+      });
+      setItems(academicDocuments || []);
+      setCategory('transcript');
+      setName('');
+      setFile(null);
+      if (fileRef.current) fileRef.current.value = '';
+      onMessage({ type: 'success', text: 'Document uploaded.' });
+    } catch (err) {
+      onMessage({
+        type: 'error',
+        text: err.response?.data?.message || 'Could not upload the document.',
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(index) {
+    try {
+      const { academicDocuments } = await studentApi.removeAcademicDocument(index);
+      setItems(academicDocuments || []);
+    } catch (err) {
+      onMessage({
+        type: 'error',
+        text: err.response?.data?.message || 'Could not remove the document.',
+      });
+    }
+  }
+
+  const labelFor = (id) =>
+    DOC_CATEGORIES.find((c) => c.id === id)?.label || id.replace(/_/g, ' ');
+
+  return (
+    <Card className="p-6">
+      <h2 className="text-base font-semibold">Academic documents</h2>
+      <p className="mt-1 text-sm text-slate-500">
+        Upload transcripts, recommendation letters, certificates, etc. You can
+        attach any of these to an application later.
+      </p>
+
+      {items.length > 0 && (
+        <ul className="mt-3 space-y-1.5">
+          {items.map((d, i) => (
+            <li
+              key={i}
+              className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2 text-sm"
+            >
+              <span className="min-w-0 truncate">
+                <span className="rounded bg-white px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider text-slate-500 ring-1 ring-slate-200">
+                  {labelFor(d.category)}
+                </span>
+                <span className="ml-2 font-medium text-slate-700">{d.name || d.filename}</span>
+                {d.path && (
+                  <a
+                    href={d.path}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="ml-2 text-brand-600 hover:underline"
+                  >
+                    📎 open
+                  </a>
+                )}
+              </span>
+              <button
+                type="button"
+                aria-label="Remove"
+                onClick={() => remove(i)}
+                className="shrink-0 text-slate-400 transition-colors hover:text-red-500"
+              >
+                ✕
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div className="mt-3 space-y-2">
+        <div className="flex flex-wrap gap-2">
+          <select
+            className={FIELD_CLS}
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+          >
+            {DOC_CATEGORIES.map((c) => (
+              <option key={c.id} value={c.id}>{c.label}</option>
+            ))}
+          </select>
+          <input
+            className={`${FIELD_CLS} flex-1`}
+            placeholder="Display name (optional — defaults to the filename)"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <input
+          type="file"
+          ref={fileRef}
+          onChange={(e) => setFile(e.target.files[0] || null)}
+          className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-brand-700 hover:file:bg-brand-100"
+        />
+        <Button type="button" size="sm" loading={busy} onClick={add}>
+          Upload document
+        </Button>
+      </div>
+    </Card>
+  );
+}
+
 export default function StudentProfileForm() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -201,6 +338,7 @@ export default function StudentProfileForm() {
   const [certs, setCerts] = useState([]);
   const [experience, setExperience] = useState([]);
   const [portfolio, setPortfolio] = useState([]);
+  const [academicDocuments, setAcademicDocuments] = useState([]);
 
   useEffect(() => {
     (async () => {
@@ -230,6 +368,7 @@ export default function StudentProfileForm() {
           setCerts(p.certifications || []);
           setExperience(p.experience || []);
           setPortfolio(p.portfolio || []);
+          setAcademicDocuments(p.academicDocuments || []);
         }
       } catch {
         /* no profile yet — start blank */
@@ -402,6 +541,12 @@ export default function StudentProfileForm() {
       </Card>
 
       <PortfolioManager items={portfolio} setItems={setPortfolio} onMessage={setMessage} />
+
+      <AcademicDocumentsManager
+        items={academicDocuments}
+        setItems={setAcademicDocuments}
+        onMessage={setMessage}
+      />
     </div>
   );
 }

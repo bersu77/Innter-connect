@@ -164,6 +164,33 @@ async function phase3() {
       (portfolioAdd.json?.portfolio || []).some((p) => p.title === 'My capstone project'),
   );
 
+  // Academic-document upload — multipart, native fetch + FormData. The endpoint
+  // is upload-only (no link-only option) so we ship a tiny synthetic PDF blob.
+  {
+    const fd = new FormData();
+    fd.append('category', 'transcript');
+    fd.append('name', 'Spring 2026 Transcript');
+    fd.append(
+      'file',
+      new Blob(['%PDF-1.4 fake transcript content'], { type: 'application/pdf' }),
+      'transcript.pdf',
+    );
+    const res = await fetch(`${BASE}/api/students/me/documents`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${ctx.studentToken}` },
+      body: fd,
+    });
+    const json = await res.json().catch(() => ({}));
+    check(
+      'student can upload an academic document',
+      res.status === 200 &&
+        Array.isArray(json?.academicDocuments) &&
+        json.academicDocuments.some(
+          (d) => d.category === 'transcript' && d.name === 'Spring 2026 Transcript' && !!d.path,
+        ),
+    );
+  }
+
   const unis = await api('/api/universities', { token: ctx.studentToken });
   check(
     'universities list is available',
@@ -430,6 +457,7 @@ async function phase6() {
         { kind: 'certification', index: 0 },
         { kind: 'experience',    index: 0 },
         { kind: 'portfolio',     index: 0 },
+        { kind: 'document',      index: 0 },
       ],
     },
   });
@@ -437,7 +465,7 @@ async function phase6() {
   const attachKinds = new Set((apply.json?.application?.attachments || []).map((a) => a.kind));
   check(
     'an application carries the chosen profile attachments',
-    ['cv', 'certification', 'experience', 'portfolio'].every((k) => attachKinds.has(k)),
+    ['cv', 'certification', 'experience', 'portfolio', 'document'].every((k) => attachKinds.has(k)),
   );
   ctx.applicationId = apply.json?.application?._id;
 
@@ -481,7 +509,7 @@ async function phase6() {
   check(
     'university receives the student\'s cover letter and every attachment kind',
     uniApp?.coverLetter === 'I am keen on DevOps and automation.' &&
-      ['cv', 'certification', 'experience', 'portfolio'].every((k) => uniKinds.has(k)),
+      ['cv', 'certification', 'experience', 'portfolio', 'document'].every((k) => uniKinds.has(k)),
   );
   // The verifier should also be able to render the student's full profile —
   // the same data the student themselves see on /dashboard/profile. The new
@@ -494,7 +522,9 @@ async function phase6() {
       !!uniApp.studentId.certifications &&
       !!uniApp.studentId.experience &&
       !!uniApp.studentId.portfolio &&
-      !!uniApp.studentId.cv?.path,
+      !!uniApp.studentId.cv?.path &&
+      Array.isArray(uniApp.studentId.academicDocuments) &&
+      uniApp.studentId.academicDocuments.some((d) => d.category === 'transcript'),
   );
 
   const verify = await api(`/api/applications/${ctx.applicationId}/verify`, {
