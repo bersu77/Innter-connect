@@ -159,3 +159,58 @@ export const removePortfolioItem = async (req, res, next) => {
     next(err);
   }
 };
+
+// @route POST /api/students/me/documents  — upload an academic document.
+// Multipart: a single `file` plus optional `category` and `name` text fields.
+// Categories are open-ended; the client offers a dropdown of common ones
+// (transcript, recommendation_letter, certificate, id_card, …).
+export const addAcademicDocument = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Attach a file for this document' });
+    }
+    const category = String(req.body.category || 'other').trim() || 'other';
+    const name = (req.body.name && String(req.body.name).trim()) || req.file.originalname;
+    const item = {
+      category,
+      name,
+      filename: req.file.originalname,
+      path: `/uploads/${req.file.filename}`,
+      uploadedAt: new Date(),
+    };
+    const profile = await Student.findOneAndUpdate(
+      { userId: req.user._id },
+      { $push: { academicDocuments: item } },
+      { new: true, upsert: true, setDefaultsOnInsert: true },
+    );
+    await logAudit({
+      req,
+      action: 'STUDENT_PROFILE_UPDATE',
+      entityType: 'Student',
+      entityId: profile._id,
+    });
+    res.json({ success: true, academicDocuments: profile.academicDocuments });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// @route DELETE /api/students/me/documents/:index  — remove an academic doc.
+export const removeAcademicDocument = async (req, res, next) => {
+  try {
+    const index = Number(req.params.index);
+    const profile = await Student.findOne({ userId: req.user._id });
+    if (!profile || !Number.isInteger(index) || !profile.academicDocuments?.[index]) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Academic document not found' });
+    }
+    profile.academicDocuments.splice(index, 1);
+    await profile.save();
+    res.json({ success: true, academicDocuments: profile.academicDocuments });
+  } catch (err) {
+    next(err);
+  }
+};

@@ -99,6 +99,16 @@ export const applyToInternship = async (req, res, next) => {
           link: p.link || p.path,
           filename: p.filename,
         });
+      } else if (sel?.kind === 'document' && student.academicDocuments?.[sel.index]) {
+        const d = student.academicDocuments[sel.index];
+        attachments.push({
+          kind: 'document',
+          label: d.name || d.filename || 'Academic document',
+          detail: d.category || 'other',
+          link: d.path,
+          path: d.path,
+          filename: d.filename,
+        });
       }
     }
     for (const f of req.files || []) {

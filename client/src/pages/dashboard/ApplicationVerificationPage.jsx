@@ -75,6 +75,31 @@ function StudentProfilePanel({ student }) {
         </div>
       )}
 
+      {student.academicDocuments?.length > 0 && (
+        <List
+          title="Academic documents"
+          items={student.academicDocuments}
+          render={(d) => (
+            <>
+              <span className="rounded bg-white px-1.5 py-0.5 text-[10px] font-mono uppercase tracking-wider text-slate-500 ring-1 ring-slate-200">
+                {(d.category || 'other').replace(/_/g, ' ')}
+              </span>
+              <span className="ml-2 font-medium text-slate-700">{d.name || d.filename}</span>
+              {d.path && (
+                <a
+                  href={d.path}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="ml-2 text-brand-600 hover:underline"
+                >
+                  📎 open
+                </a>
+              )}
+            </>
+          )}
+        />
+      )}
+
       {student.certifications?.length > 0 && (
         <List
           title="Certifications"
