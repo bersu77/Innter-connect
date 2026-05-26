@@ -376,6 +376,10 @@ async function phase6() {
     },
   });
   const internshipId = posted.json?.internship?._id;
+  // Stash for later phases — the per-internship bulk-assign test in Phase 8
+  // needs the internship id that the supervisor will actually have an intern
+  // under (ctx.internshipId is the empty Phase-5 QA posting).
+  ctx.placementInternshipId = internshipId;
 
   // The student names the university they are enrolled at on the application.
   const uniMe = await api('/api/universities/me', { token: ctx.universityToken });
@@ -719,6 +723,37 @@ async function phase8() {
   check(
     'supervisor can assign a task to all interns at once',
     bulkAll.status === 201 && Array.isArray(bulkAll.json?.tasks) && bulkAll.json.tasks.length >= 1,
+  );
+
+  // Per-internship bulk assignment — every intern THIS supervisor mentors on
+  // the given internship gets a copy. Use ctx.placementInternshipId (the
+  // DevOps posting the test student is actually placed under) — not
+  // ctx.internshipId (the empty Phase-5 QA posting that nobody got placed on).
+  const bulkInternship = await api('/api/tasks', {
+    method: 'POST',
+    token: ctx.supervisorToken,
+    body: {
+      assignToInternship: true,
+      internshipId: ctx.placementInternshipId,
+      title: 'Internship-wide kickoff doc',
+    },
+  });
+  check(
+    'supervisor can assign a task to every intern on one internship',
+    bulkInternship.status === 201 &&
+      Array.isArray(bulkInternship.json?.tasks) &&
+      bulkInternship.json.tasks.length >= 1 &&
+      bulkInternship.json.tasks.every((t) => !!t.placementId),
+  );
+  // Missing the internship id → 400, so the contract is explicit.
+  const bulkMissingId = await api('/api/tasks', {
+    method: 'POST',
+    token: ctx.supervisorToken,
+    body: { assignToInternship: true, title: 'No-target task' },
+  });
+  check(
+    'per-internship assign without internshipId is rejected',
+    bulkMissingId.status === 400,
   );
 
   // The student sees who assigned each task.
