@@ -342,6 +342,28 @@ async function phase5() {
       Array.isArray(anonBrowse.json?.internships) &&
       anonBrowse.json.internships.every((i) => i.status === 'active'),
   );
+  // Pagination — the response carries a `pagination` block with total,
+  // totalPages, page, limit. limit defaults to 20 and is clamped to 100.
+  const pag = anonBrowse.json?.pagination;
+  check(
+    'browse response carries pagination metadata',
+    pag && typeof pag.total === 'number' &&
+      typeof pag.totalPages === 'number' &&
+      pag.page === 1 && pag.limit === 20,
+  );
+  // Page 2 with a small limit gives a different slice on the same query —
+  // proves skip/limit are wired through end-to-end.
+  const page1 = await api('/api/internships?page=1&limit=5');
+  const page2 = await api('/api/internships?page=2&limit=5');
+  const ids1 = (page1.json?.internships || []).map((i) => i._id);
+  const ids2 = (page2.json?.internships || []).map((i) => i._id);
+  check(
+    'paged requests return disjoint slices',
+    page1.status === 200 && page2.status === 200 &&
+      ids1.length === 5 &&
+      ids2.length > 0 &&
+      ids1.every((id) => !ids2.includes(id)),
+  );
 
   const detail = await api(`/api/internships/${ctx.internshipId}`, { token: ctx.studentToken });
   check('internship detail loads & counts a view', detail.status === 200 && detail.json?.internship?.viewCount >= 1);

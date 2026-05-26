@@ -61,11 +61,26 @@ export const listInternships = async (req, res, next) => {
     if (type) query['position.type'] = type;
     if (search) query.$text = { $search: search };
 
-    const internships = await Internship.find(query)
-      .populate('companyId', 'name city industry logo verified')
-      .sort('-postedDate')
-      .limit(100);
-    res.json({ success: true, internships });
+    // Pagination — clamped server-side so a hostile or malformed page/limit
+    // can't blow past 100 docs per request.
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const skip = (page - 1) * limit;
+
+    const [internships, total] = await Promise.all([
+      Internship.find(query)
+        .populate('companyId', 'name city industry logo verified')
+        .sort('-postedDate')
+        .skip(skip)
+        .limit(limit),
+      Internship.countDocuments(query),
+    ]);
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    res.json({
+      success: true,
+      internships,
+      pagination: { page, limit, total, totalPages },
+    });
   } catch (err) {
     next(err);
   }
