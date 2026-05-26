@@ -9,13 +9,14 @@
 // `softProtect`, so it accepts both anonymous and authenticated callers and
 // returns the same {status:'active'} set either way.
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Search, ArrowRight } from 'lucide-react';
+import { MapPin, Search, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { internshipApi } from '../api/internships';
 import { Badge, Button, Card, Input, Select, Spinner } from '../components/ui';
 
 const TYPES = ['onsite', 'remote', 'hybrid'];
+const PAGE_SIZE = 20;
 
 export default function PublicInternshipsPage() {
   const [items, setItems] = useState([]);
@@ -23,37 +24,67 @@ export default function PublicInternshipsPage() {
   const [search, setSearch] = useState('');
   const [type, setType] = useState('');
   const [location, setLocation] = useState('');
+  const [page, setPage] = useState(1);
+  // Pagination metadata from the server — drives the pager + the "Showing
+  // X–Y of Z" line. Defaulted to a coherent empty state so first paint has
+  // no jumps before the first response lands.
+  const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, totalPages: 1 });
 
-  async function load(q = {}) {
-    setLoading(true);
-    try {
-      const data = await internshipApi.list(q);
-      setItems(data.internships || []);
-    } catch {
-      setItems([]);
-    } finally {
-      setLoading(false);
-    }
-  }
+  const load = useCallback(
+    async (extras = {}) => {
+      setLoading(true);
+      try {
+        const q = {
+          page: extras.page ?? page,
+          limit: PAGE_SIZE,
+          ...(extras.search ?? search.trim() ? { search: extras.search ?? search.trim() } : {}),
+          ...(extras.type ?? type ? { type: extras.type ?? type } : {}),
+          ...(extras.location ?? location.trim() ? { location: extras.location ?? location.trim() } : {}),
+        };
+        const data = await internshipApi.list(q);
+        setItems(data.internships || []);
+        setPagination(
+          data.pagination || {
+            page: q.page,
+            limit: PAGE_SIZE,
+            total: (data.internships || []).length,
+            totalPages: 1,
+          },
+        );
+      } catch {
+        setItems([]);
+        setPagination({ page: 1, limit: PAGE_SIZE, total: 0, totalPages: 1 });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [page, search, type, location],
+  );
 
+  // First load + page change.
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   function onSubmit(e) {
     e.preventDefault();
-    const q = {};
-    if (search.trim()) q.search = search.trim();
-    if (type) q.type = type;
-    if (location.trim()) q.location = location.trim();
-    load(q);
+    // New search resets to page 1 — otherwise a deep page on a wider result
+    // set could land outside the new total.
+    if (page !== 1) setPage(1);
+    else load({ page: 1 });
   }
 
   function clearAll() {
     setSearch('');
     setType('');
     setLocation('');
-    load();
+    if (page !== 1) setPage(1);
+    else load({ page: 1, search: '', type: '', location: '' });
+  }
+
+  function goTo(nextPage) {
+    setPage(Math.min(Math.max(1, nextPage), pagination.totalPages));
   }
 
   // Distinct location chips derived from what's currently loaded — clicking
@@ -82,7 +113,7 @@ export default function PublicInternshipsPage() {
             fontWeight: 400,
           }}
         >
-          Open internships{items.length ? ` — ${items.length}` : ''}.
+          Open internships{pagination.total ? ` — ${pagination.total}` : ''}.
         </h1>
         <p
           className="t-body-lg"
@@ -194,13 +225,107 @@ export default function PublicInternshipsPage() {
               </p>
             </Card>
           ) : (
-            <div className="flex flex-col gap-3">
-              {items.map((it) => (
-                <InternshipRow key={it._id} item={it} />
-              ))}
-            </div>
+            <>
+              <div className="flex flex-col gap-3">
+                {items.map((it) => (
+                  <InternshipRow key={it._id} item={it} />
+                ))}
+              </div>
+
+              {/* Pager — only when there's more than one page. */}
+              {pagination.totalPages > 1 && (
+                <Pager pagination={pagination} onChange={goTo} />
+              )}
+            </>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Pager ─────────────────────────────────────────────────────────────────
+function Pager({ pagination, onChange }) {
+  const { page, limit, total, totalPages } = pagination;
+  const start = total === 0 ? 0 : (page - 1) * limit + 1;
+  const end = Math.min(page * limit, total);
+
+  // Window of page numbers around the current page. Keeps the pager compact
+  // even with hundreds of pages: shows first, current ±2, last, with ellipses.
+  const windowSize = 2;
+  const pages = [];
+  for (let i = 1; i <= totalPages; i += 1) {
+    if (
+      i === 1 ||
+      i === totalPages ||
+      (i >= page - windowSize && i <= page + windowSize)
+    ) {
+      pages.push(i);
+    } else if (pages[pages.length - 1] !== '…') {
+      pages.push('…');
+    }
+  }
+
+  return (
+    <div
+      className="mt-6 flex flex-wrap items-center justify-between gap-3"
+    >
+      <span
+        className="t-caption"
+        style={{ color: 'var(--text-tertiary)' }}
+      >
+        Showing {start}–{end} of {total}
+      </span>
+      <div className="flex items-center gap-1">
+        <Button
+          variant="ghost"
+          size="sm"
+          leading={<ChevronLeft size={14} strokeWidth={1.8} />}
+          disabled={page <= 1}
+          onClick={() => onChange(page - 1)}
+        >
+          Prev
+        </Button>
+        {pages.map((p, i) =>
+          p === '…' ? (
+            <span
+              key={`gap-${i}`}
+              className="t-mono"
+              style={{ color: 'var(--text-tertiary)', padding: '0 4px' }}
+            >
+              …
+            </span>
+          ) : (
+            <button
+              key={p}
+              type="button"
+              onClick={() => onChange(p)}
+              className="t-mono"
+              style={{
+                minWidth: 32,
+                height: 32,
+                padding: '0 8px',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: 13,
+                background: p === page ? 'var(--brand-500)' : 'transparent',
+                color: p === page ? '#fff' : 'var(--text-secondary)',
+                border: 0,
+                cursor: 'pointer',
+              }}
+            >
+              {p}
+            </button>
+          ),
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          trailing={<ChevronRight size={14} strokeWidth={1.8} />}
+          disabled={page >= totalPages}
+          onClick={() => onChange(page + 1)}
+        >
+          Next
+        </Button>
       </div>
     </div>
   );
