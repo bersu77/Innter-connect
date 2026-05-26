@@ -381,6 +381,35 @@ async function phase6() {
   const uniMe = await api('/api/universities/me', { token: ctx.universityToken });
   ctx.universityId = uniMe.json?.profile?._id;
 
+  // CV is required to apply (UC003). Register a fresh student, give them a
+  // profile WITHOUT a CV, then attempt to apply — the server should reject
+  // with a 400 + a clear message naming the CV. The positive case below
+  // works because seeded `dawit` already has a CV on file.
+  const cvlessEmail = `cvless.${Date.now()}@aau.edu.et`;
+  const cvlessReg = await api('/api/auth/register', {
+    method: 'POST',
+    body: {
+      firstName: 'No', lastName: 'CV', email: cvlessEmail,
+      password: 'Password123!', userType: 'student',
+    },
+  });
+  // Create the Student profile so the apply call gets past the
+  // "Complete your student profile" check and reaches the CV gate.
+  await api('/api/students/me', {
+    method: 'PUT',
+    token: cvlessReg.json?.token,
+    body: { major: 'Software Engineering', studentId: 'UGR/9999/15', gpa: 3.5 },
+  });
+  const noCvApply = await api('/api/applications', {
+    method: 'POST',
+    token: cvlessReg.json?.token,
+    body: { internshipId, coverLetter: 'No CV yet.', universityId: ctx.universityId },
+  });
+  check(
+    'a student without a CV cannot apply',
+    noCvApply.status === 400 && /CV/i.test(noCvApply.json?.message || ''),
+  );
+
   // End-to-end attachment proof: attach ALL four kinds — CV, certification,
   // work experience, and portfolio item — verifying that every kind the
   // student picks at apply-time round-trips into Application.attachments
@@ -449,6 +478,19 @@ async function phase6() {
     'university receives the student\'s cover letter and every attachment kind',
     uniApp?.coverLetter === 'I am keen on DevOps and automation.' &&
       ['cv', 'certification', 'experience', 'portfolio'].every((k) => uniKinds.has(k)),
+  );
+  // The verifier should also be able to render the student's full profile —
+  // the same data the student themselves see on /dashboard/profile. The new
+  // populate widens beyond `major gpa cv userId` to return every profile
+  // field. Spot-check the high-value fields here.
+  check(
+    'university receives the full student profile on the verifier card',
+    !!uniApp?.studentId?.skills &&
+      Array.isArray(uniApp.studentId.skills) &&
+      !!uniApp.studentId.certifications &&
+      !!uniApp.studentId.experience &&
+      !!uniApp.studentId.portfolio &&
+      !!uniApp.studentId.cv?.path,
   );
 
   const verify = await api(`/api/applications/${ctx.applicationId}/verify`, {
