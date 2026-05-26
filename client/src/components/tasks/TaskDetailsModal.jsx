@@ -109,6 +109,7 @@ function SubmissionBlock({ submission }) {
 function GradedBlock({ task }) {
   if (!task.gradedAt) return null;
   const max = task.maxScore ?? 100;
+  const hasRubric = Array.isArray(task.rubric) && task.rubric.length > 0;
   return (
     <div
       className="rounded-md p-3"
@@ -117,10 +118,7 @@ function GradedBlock({ task }) {
         boxShadow: 'inset 0 0 0 1px var(--brand-100)',
       }}
     >
-      <div
-        className="t-eyebrow"
-        style={{ color: 'var(--brand-700)' }}
-      >
+      <div className="t-eyebrow" style={{ color: 'var(--brand-700)' }}>
         Grade
       </div>
       <div
@@ -129,18 +127,64 @@ function GradedBlock({ task }) {
       >
         {task.score} / {max}
       </div>
+      {hasRubric && (
+        <table
+          className="mt-3 w-full text-sm"
+          style={{ color: 'var(--brand-700)', borderCollapse: 'collapse' }}
+        >
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--brand-100)' }}>
+              <th style={{ textAlign: 'left', padding: '4px 0', fontWeight: 500 }}>
+                Criterion
+              </th>
+              <th style={{ textAlign: 'right', padding: '4px 0', fontWeight: 500, width: 80 }}>
+                Score
+              </th>
+              <th style={{ textAlign: 'right', padding: '4px 0', fontWeight: 500, width: 60 }}>
+                Max
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {task.rubric.map((r, i) => (
+              <tr
+                key={i}
+                style={{ borderBottom: i === task.rubric.length - 1 ? 0 : '1px solid var(--brand-100)' }}
+              >
+                <td style={{ padding: '6px 0' }}>{r.criterion}</td>
+                <td
+                  style={{
+                    padding: '6px 0',
+                    textAlign: 'right',
+                    fontFamily: 'var(--font-mono)',
+                  }}
+                >
+                  {r.score}
+                </td>
+                <td
+                  style={{
+                    padding: '6px 0',
+                    textAlign: 'right',
+                    fontFamily: 'var(--font-mono)',
+                    opacity: 0.7,
+                  }}
+                >
+                  / {r.maxScore}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       {task.feedback && (
         <p
-          className="mt-2 whitespace-pre-line t-body-sm"
+          className="mt-3 whitespace-pre-line t-body-sm"
           style={{ color: 'var(--brand-700)' }}
         >
           {task.feedback}
         </p>
       )}
-      <div
-        className="t-caption"
-        style={{ marginTop: 6, color: 'var(--brand-700)' }}
-      >
+      <div className="t-caption" style={{ marginTop: 8, color: 'var(--brand-700)' }}>
         Graded {fmtDateTime(task.gradedAt)}
       </div>
     </div>
@@ -292,22 +336,100 @@ function SubmissionForm({ task, onSubmit, onAfter }) {
 }
 
 // ── Supervisor grade form ────────────────────────────────────────────────
+//
+// Rubric-based: the supervisor builds a list of criteria, each with a max
+// weight (out of 100) and the student's awarded score. The criteria's
+// `maxScore` MUST sum to exactly 100 before the grade can be saved; the
+// student's total score = sum of awarded scores.
+//
+// Common criteria are offered as a one-click "Add" picker. The supervisor
+// can also type a custom criterion name, change weights, remove rows.
+
+const SUGGESTED_CRITERIA = [
+  'Understanding of the task',
+  'Accuracy / correctness',
+  'Depth / quality of work',
+  'Clarity & communication',
+  'Completeness / effort',
+  'Originality',
+  'Presentation / organization',
+  'Critical thinking',
+  'Timely delivery',
+];
+
+// Default rubric for first-time graders — 4 balanced criteria, sum = 100.
+const DEFAULT_RUBRIC = () => [
+  { criterion: 'Accuracy / correctness',  maxScore: 30, score: '' },
+  { criterion: 'Depth / quality of work', maxScore: 30, score: '' },
+  { criterion: 'Completeness / effort',   maxScore: 20, score: '' },
+  { criterion: 'Timely delivery',         maxScore: 20, score: '' },
+];
+
 function GradeForm({ task, onGrade, onAfter }) {
-  const max = task.maxScore ?? 100;
-  const [score, setScore] = useState(task.score ?? '');
+  // Seed from the existing rubric on the task when re-grading; otherwise
+  // start from the default 4-row scaffold.
+  const [rows, setRows] = useState(() =>
+    Array.isArray(task.rubric) && task.rubric.length > 0
+      ? task.rubric.map((r) => ({
+          criterion: r.criterion,
+          maxScore: r.maxScore,
+          score: r.score ?? '',
+        }))
+      : DEFAULT_RUBRIC(),
+  );
   const [feedback, setFeedback] = useState(task.feedback || '');
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
+  const totalMax = rows.reduce((a, r) => a + (Number(r.maxScore) || 0), 0);
+  const totalScore = rows.reduce((a, r) => a + (Number(r.score) || 0), 0);
+  const maxOk = totalMax === 100;
+
+  function setRow(i, patch) {
+    setRows((cur) => cur.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  }
+  function removeRow(i) {
+    setRows((cur) => cur.filter((_, idx) => idx !== i));
+  }
+  function addRow(criterion = '', maxScore = 10) {
+    setRows((cur) => [...cur, { criterion, maxScore, score: '' }]);
+  }
+  function resetDefault() {
+    setRows(DEFAULT_RUBRIC());
+  }
+
   async function go() {
     setErr('');
-    if (score === '' || Number.isNaN(Number(score))) {
-      setErr('Enter a numeric score.');
+    if (rows.length === 0) {
+      setErr('Add at least one criterion before saving.');
       return;
+    }
+    if (!maxOk) {
+      setErr(`Criterion max scores must sum to 100 (currently ${totalMax}).`);
+      return;
+    }
+    for (const r of rows) {
+      if (!r.criterion?.trim()) {
+        setErr('Every criterion needs a name.');
+        return;
+      }
+      const s = Number(r.score);
+      if (r.score === '' || Number.isNaN(s) || s < 0 || s > Number(r.maxScore)) {
+        setErr(`Score for "${r.criterion}" must be 0..${r.maxScore}.`);
+        return;
+      }
     }
     setBusy(true);
     try {
-      await onGrade(task._id, Number(score), feedback);
+      await onGrade(task._id, {
+        rubric: rows.map((r) => ({
+          criterion: r.criterion.trim(),
+          maxScore: Number(r.maxScore),
+          score: Number(r.score),
+        })),
+        feedback,
+      });
       onAfter?.();
     } catch (e) {
       setErr(e.response?.data?.message || 'Could not save the grade.');
@@ -316,30 +438,158 @@ function GradeForm({ task, onGrade, onAfter }) {
     }
   }
 
+  const usedNames = new Set(rows.map((r) => r.criterion.trim().toLowerCase()));
+
   return (
     <div className="flex flex-col gap-3">
-      <Input
-        label={`Score (out of ${max})`}
-        type="number"
-        min="0"
-        max={max}
-        value={score}
-        onChange={(e) => setScore(e.target.value)}
-      />
+      <p className="t-caption" style={{ color: 'var(--text-tertiary)', margin: 0 }}>
+        Break the score across criteria. Weights (max) must sum to <strong>100</strong>;
+        the student's total is the sum of awarded scores.
+      </p>
+
+      {/* Header row */}
+      <div
+        className="grid items-center gap-2"
+        style={{ gridTemplateColumns: '1fr 80px 80px 28px' }}
+      >
+        <span className="t-eyebrow">Criterion</span>
+        <span className="t-eyebrow" style={{ textAlign: 'center' }}>Max</span>
+        <span className="t-eyebrow" style={{ textAlign: 'center' }}>Score</span>
+        <span />
+      </div>
+
+      {rows.map((r, i) => (
+        <div
+          key={i}
+          className="grid items-center gap-2"
+          style={{ gridTemplateColumns: '1fr 80px 80px 28px' }}
+        >
+          <input
+            className="input"
+            value={r.criterion}
+            onChange={(e) => setRow(i, { criterion: e.target.value })}
+            placeholder="e.g. Accuracy / correctness"
+            style={{ height: 36 }}
+          />
+          <input
+            className="input"
+            type="number"
+            min="1"
+            max="100"
+            value={r.maxScore}
+            onChange={(e) => setRow(i, { maxScore: Number(e.target.value) || 0 })}
+            style={{ height: 36, textAlign: 'center', padding: '0 8px' }}
+          />
+          <input
+            className="input"
+            type="number"
+            min="0"
+            max={r.maxScore}
+            value={r.score}
+            onChange={(e) => setRow(i, { score: e.target.value })}
+            style={{ height: 36, textAlign: 'center', padding: '0 8px' }}
+          />
+          <button
+            type="button"
+            onClick={() => removeRow(i)}
+            aria-label="Remove criterion"
+            className="btn btn-ghost btn-sm"
+            style={{ width: 28, height: 28, padding: 0 }}
+          >
+            <X size={14} strokeWidth={1.8} />
+          </button>
+        </div>
+      ))}
+
+      {/* Add controls */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setPickerOpen((o) => !o)}
+          >
+            + Add a common criterion
+          </Button>
+          {pickerOpen && (
+            <div
+              className="absolute z-10 mt-1 overflow-hidden"
+              style={{
+                background: 'var(--bg-raised)',
+                borderRadius: 'var(--radius-md)',
+                boxShadow: 'var(--shadow-3), 0 0 0 1px var(--border-default)',
+                minWidth: 240,
+                maxHeight: 280,
+                overflowY: 'auto',
+              }}
+            >
+              {SUGGESTED_CRITERIA.map((s) => {
+                const taken = usedNames.has(s.toLowerCase());
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    disabled={taken}
+                    onClick={() => {
+                      addRow(s, 10);
+                      setPickerOpen(false);
+                    }}
+                    className="block w-full text-left t-body-sm"
+                    style={{
+                      padding: '8px 12px',
+                      background: 'transparent',
+                      border: 0,
+                      cursor: taken ? 'not-allowed' : 'pointer',
+                      color: taken ? 'var(--text-tertiary)' : 'var(--text-primary)',
+                    }}
+                  >
+                    {s}{taken ? '  · added' : ''}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => addRow('', 10)}
+        >
+          + Custom criterion
+        </Button>
+        <Button variant="ghost" size="sm" onClick={resetDefault}>
+          Reset to default
+        </Button>
+      </div>
+
+      {/* Live totals */}
+      <div
+        className="flex flex-wrap items-center justify-between gap-2 rounded-md p-3"
+        style={{
+          background: maxOk ? 'var(--success-50)' : 'var(--warning-50)',
+          color: maxOk ? 'var(--success-700)' : 'var(--warning-700)',
+        }}
+      >
+        <span className="t-body-sm" style={{ fontWeight: 500 }}>
+          Max: {totalMax} / 100 {maxOk ? '✓' : `(${totalMax > 100 ? 'over' : 'short'} by ${Math.abs(100 - totalMax)})`}
+        </span>
+        <span className="t-body-sm" style={{ fontWeight: 500 }}>
+          Awarded: {totalScore} / 100
+        </span>
+      </div>
+
       <Textarea
-        label="Feedback"
+        label="Feedback (optional)"
         rows={3}
         value={feedback}
         onChange={(e) => setFeedback(e.target.value)}
-        placeholder="Comment on the student's work…"
+        placeholder="Overall comment on the student's work…"
       />
       {err && (
-        <p className="t-caption" style={{ color: 'var(--danger-600)' }}>
-          {err}
-        </p>
+        <p className="t-caption" style={{ color: 'var(--danger-600)' }}>{err}</p>
       )}
       <div className="flex justify-end">
-        <Button loading={busy} onClick={go}>
+        <Button loading={busy} onClick={go} disabled={!maxOk}>
           {task.gradedAt ? 'Update grade' : 'Save grade'}
         </Button>
       </div>

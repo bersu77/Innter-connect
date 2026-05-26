@@ -112,10 +112,12 @@ export default function TasksPage() {
     await load();
     reopenAfterRefresh(id);
   }
-  async function grade(id, score, feedback) {
+  // `payload` is either { score, feedback } (legacy) or { rubric, feedback }
+  // (rubric mode). Server validates the right shape; we just forward it.
+  async function grade(id, payload) {
     setError('');
     try {
-      await taskApi.grade(id, score, feedback);
+      await taskApi.grade(id, payload);
       await load();
     } catch (err) {
       setError(err.response?.data?.message || 'Could not grade the task.');

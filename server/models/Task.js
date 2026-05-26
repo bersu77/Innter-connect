@@ -39,6 +39,23 @@ const taskSchema = new mongoose.Schema(
     maxScore: { type: Number, default: 100 },
     score: { type: Number },
     feedback: { type: String },
+    // Optional rubric breakdown — when present, the supervisor graded the
+    // task across multiple weighted criteria whose `maxScore`s sum to 100.
+    // `task.score` is then the sum of `score` across all rubric rows; the
+    // rubric is the source of truth, `score` is the cached total.
+    // Tasks graded before this feature have no rubric — `score` is the flat
+    // number the supervisor typed; both shapes coexist.
+    rubric: {
+      type: [
+        {
+          _id: false,
+          criterion: { type: String, required: true, trim: true },
+          maxScore: { type: Number, required: true, min: 1, max: 100 },
+          score: { type: Number, required: true, min: 0 },
+        },
+      ],
+      default: [],
+    },
     gradedAt: Date,
     gradedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     // True when the score of 0 was applied automatically because the deadline
