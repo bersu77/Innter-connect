@@ -487,6 +487,18 @@ async function phase6() {
     'company sees received applications',
     received.status === 200 && received.json.applications.some((a) => a._id === ctx.applicationId),
   );
+  // The company branch of listApplications must return every attachment kind
+  // the student picked at apply-time — including the academic document. This
+  // mirrors the assertion on the uni branch (caught the original "uni only
+  // sees the CV" bug) so the same thing on the company side fails loudly.
+  const companyApp = (received.json.applications || []).find((a) => a._id === ctx.applicationId);
+  const companyKinds = new Set((companyApp?.attachments || []).map((a) => a.kind));
+  check(
+    'company receives every attachment kind the student picked',
+    ['cv', 'certification', 'experience', 'portfolio', 'document'].every((k) =>
+      companyKinds.has(k),
+    ),
+  );
 
   // Gate: the company cannot act until the university verifies the student.
   const blockedEarly = await api(`/api/applications/${ctx.applicationId}/status`, {
