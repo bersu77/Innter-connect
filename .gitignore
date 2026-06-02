@@ -33,15 +33,12 @@ Thumbs.db
 *.log
 npm-debug.log*
 config.bat
-<<<<<<< HEAD
 
 # Local-only working-tree files — kept on disk for the owner's convenience
 # (demo credentials, the original design brief PDF transcript) but never
 # meant to be in version control.
 credentials
 DESIGN_BRIEF.md
-=======
 branch_structure.json
 temp_auto_push.bat
 temp_interactive_push.bat
->>>>>>> main
