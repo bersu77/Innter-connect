@@ -1,4 +1,6 @@
 import 'dotenv/config';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -21,16 +23,13 @@ import dashboardRoutes from './routes/dashboardRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import auditRoutes from './routes/auditRoutes.js';
 import errorHandler, { notFound } from './middleware/errorHandler.js';
-import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
+
+// Recreate __dirname for ES Modules.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-
-// These two lines recreate __dirname for ES Modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Connect to MongoDB
 await connectDB();
@@ -67,21 +66,22 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/audit', auditRoutes);
 
+// --- Serve the built React frontend (single Web Service deploy) ---
+// server/index.js lives in /server, so the build output is one level up in
+// /client/dist. Express serves the static assets, then any non-API GET falls
+// through to index.html so React Router can handle client-side routing.
+const clientDist = path.join(__dirname, '../client/dist');
+app.use(express.static(clientDist));
+
+app.get('*', (req, res, next) => {
+  // Let unmatched /api/* requests fall through to the JSON 404 handler below.
+  if (req.path.startsWith('/api')) return next();
+  res.sendFile(path.join(clientDist, 'index.html'));
+});
+
 // 404 + error handler (must be last)
 app.use(notFound);
 app.use(errorHandler);
-
-app.use(express.static(path.join(__dirname, '../client/dist')));
-
-// 2. Handle API routes (example)
-app.get('/api/test', (req, res) => {
-  res.json({ message: "Backend is working!" });
-});
-
-// 3. The "Catch-all" route to serve the frontend
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/dist', 'index.html'));
-});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
