@@ -8,7 +8,8 @@
     "start": "node index.js",
     "dev": "nodemon index.js",
     "seed": "node seed/seed.js",
-    "test": "node tests/integration.mjs"
+    "test": "node tests/integration.mjs",
+    "db:sync": "node scripts/syncSchema.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
