@@ -21,9 +21,16 @@ import dashboardRoutes from './routes/dashboardRoutes.js';
 import reportRoutes from './routes/reportRoutes.js';
 import auditRoutes from './routes/auditRoutes.js';
 import errorHandler, { notFound } from './middleware/errorHandler.js';
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// These two lines recreate __dirname for ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Connect to MongoDB
 await connectDB();
@@ -63,6 +70,18 @@ app.use('/api/audit', auditRoutes);
 // 404 + error handler (must be last)
 app.use(notFound);
 app.use(errorHandler);
+
+app.use(express.static(path.join(__dirname, '../client/dist')));
+
+// 2. Handle API routes (example)
+app.get('/api/test', (req, res) => {
+  res.json({ message: "Backend is working!" });
+});
+
+// 3. The "Catch-all" route to serve the frontend
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/dist', 'index.html'));
+});
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
