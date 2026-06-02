@@ -1,0 +1,220 @@
+# Session Context — InternConnect
+
+> **Handoff snapshot** — last updated 2026-05-20.
+> Phases 0–13 are complete. **Sixteen** post-phase feature rounds are merged to
+> `staging`, including **portfolio uploads** (most recent). There is no work in
+> progress — a new session can start a fresh feature off `staging`.
+> **⚠ Outstanding:** `staging` is **~33 commits ahead of `origin/staging` and has not
+> been pushed** — every post-phase round is local-only. Pushing `staging` (and the
+> feature branches) to GitHub is the one pending action — see "Git state" below.
+
+## Project
+
+InternConnect — a MERN **Internship Management System** (Addis Ababa University
+final-year project) connecting students, companies, universities, supervisors, and
+administrators across the full internship lifecycle. Built **strictly** from
+`Fina year Project  InterConnect.pdf` (136 pages). Repo root: `/home/abel/bersu/Innter-connect`.
+Structure: `client/` (React+Vite) + `server/` (Express) + `BUILD_PLAN.md`.
+
+## Completed & merged to `staging`
+
+**Phases 0–13** — full functional system: app shell/design system; 13 Mongoose models +
+seed; auth/RBAC/audit/lockout; profiles + CV upload; verification + admin user mgmt;
+internship posting/browsing/invitations; applications & selection; offers/placement/
+withdrawal; supervisor tasks & assessments; completion & final reports; notifications +
+dashboards; reporting & analytics; audit & compliance review; NFR hardening + tests.
+
+**Post-phase feature rounds (also merged to `staging`):**
+1. **Supervisor workspace** (`b818929`) — Company **Manager** vs **Supervisor** as two
+   workspaces with their own dashboards/nav (supervisor = company user with
+   `roles:['supervisor']`); manager creates supervisor accounts (username + temp
+   password); login by **email *or* username**; `PATCH /auth/credentials` to change
+   own username/password; supervisor↔student **chat** (Message model, thread per
+   placement); task **grading** (score + feedback); **verification appeals UI**;
+   **PDF/Excel/CSV** report export (`pdfkit` + `exceljs`).
+2. **Task deliverables** (`4d97493`) — supervisor marks which deliverables
+   (document / link / note) a task **requires**; student submission form enforces them
+   client- *and* server-side (`POST /tasks/:id/submit`, file upload); submitted work
+   shown to both roles.
+3. **Supervisor reassignment** (branch `feat/supervisor-reassignment`) — a company
+   **manager** can **change** a placement's supervisor, picking a **mode**:
+   `continue` (the new supervisor inherits the existing chat conversation) or `fresh`
+   (a new conversation starts; the prior thread is hidden from the active view).
+   `Placement.engagementStartedAt` is the chat-thread boundary (`fresh` moves it to
+   "now", `continue` leaves it); `Placement.supervisorHistory[]` is the audit trail.
+   `assignSupervisor` handles initial assignment **and** reassignment, validates the
+   supervisor belongs to the company, notifies new + previous supervisor + student, and
+   audits `SUPERVISOR_ASSIGN`/`SUPERVISOR_REASSIGN`. Tasks are now **placement-scoped**
+   for supervisors (`listTasks`/`gradeTask` key off `placement.supervisorId`, not
+   `task.assignedBy`), so a newly-assigned supervisor sees and can grade the
+   placement's existing tasks. PlacementsPage has a **"Change supervisor"** control.
+4. **Task grading rules** (branch `feat/task-grading-rules`) — three task additions:
+   **(a) Auto-zero on a missed deadline** — a task not completed before its deadline
+   is automatically scored 0. Lazy enforcement (`applyOverdue` runs on every task
+   read/write — no background job, infrastructure is deferred); once overdue the task
+   is locked, so `submitTask`/`updateProgress` reject it. **(b) Grade appeals** — a
+   student can appeal a graded task (`POST /tasks/:id/appeal`, including an auto-zero);
+   the placement **supervisor** resolves it (`PATCH /tasks/:id/appeal`), upholding the
+   grade or adjusting the score. `Task.gradeAppeal` holds the appeal thread. **(c)
+   Unique task tag** — every task gets a server-set sequential `taskNumber`, surfaced
+   as a `TSK-0042` tag (Mongoose virtual); never editable. TasksPage shows the tag and
+   the appeal UI for both roles.
+
+5. **Task counting & workspace polish** (branch `feat/task-counting-and-workspace`) —
+   six related changes. **(a) Per-student task numbering** — `Task.taskNumber` now
+   counts from 1 *per student* (compound unique index `{studentId, taskNumber}`), so
+   the same task is one student's 3rd and another's 10th; the `TSK-0042` tag is
+   unchanged in format. **(b) Bulk assign** — `createTask` accepts `assignToAll` to
+   assign one task to every active intern at once (one Task doc per student, each
+   numbered in its own sequence); returns `{ task, tasks }`. **(c) Task search** —
+   client-side filter on the Tasks page (tag/title/status/name), per role. **(d)
+   Student email rule** — registration requires an `@aau.edu.et` address for
+   `userType:'student'` (server + RegisterPage). **(e) Assigner shown** — `listTasks`
+   populates `assignedBy`; the student's task card shows "Assigned by {name}" and the
+   notification names the supervisor. **(f) Org name in header** — auth responses
+   (login/register/getMe) include `organizationName`; DashboardLayout shows it above
+   the "… workspace" label.
+6. **Academic student email** (branch `feat/academic-student-email`) — broadened the
+   round-5 (d) student email rule: registration now accepts **any academic
+   institutional email** — domains ending in `.edu`, `.edu.<cc>` (e.g. `aau.edu.et`)
+   or `.ac.<cc>` (e.g. `ox.ac.uk`) — and rejects personal/consumer providers and
+   ordinary domains, instead of only `@aau.edu.et`. Regex `ACADEMIC_EMAIL` in
+   `authController` (mirrored in RegisterPage). Enforced for `userType:'student'`.
+
+7. **Invitation message** (branch `feat/invitation-message`) — the university's
+   PartnersPage "Invite" action now expands to an optional message `<Textarea>`;
+   on send it passes the note through `invitationApi.send(companyId, message)`. The
+   `Invitation.message` field, the controller and the company-side display already
+   existed — this round wires up the send form and shows the note in the university's
+   "Sent invitations" table.
+
+8. **Report charts** (branch `feat/report-charts`) — every generated report now
+   shows interactive analytical charts (`recharts`): a bar chart of the report's
+   summary metrics, plus a status-breakdown pie when the rows carry a `status`
+   field. `components/ReportCharts.jsx`, lazy-loaded in ReportsPage so `recharts`
+   ships as its own on-demand JS chunk and the main bundle stays unchanged.
+
+9. **List filters** (branch `feat/list-filters`) — a reusable `components/FilterBar.jsx`
+   (search box + dropdown filters) added to every dashboard list/search page:
+   Internships, Applications, Placements, Tasks, Admin Users, Organization
+   Verification, Student Verification, Appeals, Assessments, Invitations, Supervisors
+   and Partners. Filtering is client-side over the loaded list, by each page's
+   prominent fields (status, type, role, major, …); dropdown options are derived
+   from the data. AuditPage already had action/status filters and was left as-is.
+
+10. **Light & dark mode** (branch `feat/dark-mode`) — a theme toggle (sun/moon) in
+    the dashboard header. `lib/theme.js` follows the OS `prefers-color-scheme` on
+    first load and persists the user's choice to `localStorage`; `main.jsx` applies
+    it before first paint (no flash). Dark mode is a global palette remap in
+    `index.css`: `.dark`-prefixed selectors override the light Tailwind utilities
+    (`bg-white`, `text-slate-*`, borders, status tints), so every page is covered
+    without per-element `dark:` variants. `darkMode:'class'` set in tailwind config.
+
+11. **Application university verification** (branch `feat/application-university-verification`)
+    — a verification gate in the application workflow. The student names the university
+    they are enrolled at when applying (the apply form has a university selector,
+    pre-filled from their profile). That university is notified and must verify the
+    student (enrolment + documents) before the company can act. `Application` gains
+    `universityVerification` (`{status, reviewedBy, reviewedAt, note}`);
+    `updateApplicationStatus` (company) is gated on `status === 'approved'`;
+    `PATCH /applications/:id/verify` (university) approves or rejects — a rejection
+    **closes the application** (`status: 'rejected'`). New `ApplicationVerificationPage`
+    + a university nav item "Applications"; `listApplications` gains a university
+    branch; the company's ApplicationsPage shows "Awaiting university verification"
+    until it clears.
+
+12. **Messages & reports filters** (branch `feat/messages-reports-filters`) — completes
+    the round-9 filter coverage on the two searchable lists it missed: a conversation
+    search on the Messages thread list, and a title search + `type` filter on the
+    Reports list (`FilterBar`). Every searchable list in the dashboard now has a filter.
+
+13. **Appeal documents** (branch `feat/appeal-documents`) — a student appealing a
+    task grade can optionally attach supporting documents. `Task.gradeAppeal.documents[]`;
+    `POST /tasks/:id/appeal` now runs `upload.array('documents', 5)`; `taskApi.appeal`
+    sends multipart form data; the appeal panel shows the attached files to both the
+    student and the supervisor. (A JSON appeal with no files still works — multer
+    passes non-multipart requests through.)
+
+14. **CV required** (branch `feat/cv-required`) — uploading a CV is now a required
+    step to complete a student profile. `profileComplete` includes `cv.path` (via a
+    shared `isProfileComplete` helper, recomputed both on profile save and on CV
+    upload). The CV section of StudentProfileForm is marked required with a clear
+    prompt when missing; seeded students get a CV so demo profiles stay complete.
+    (Applying is not separately gated — the requirement is at profile completion,
+    matching the request.)
+
+15. **Profile portfolio & apply-time suggestions** (branch `feat/profile-portfolio`)
+    — students add optional profile extras: certifications, work experience, and a
+    work-showcase portfolio (titled links). `Student.experience`/`portfolio` added;
+    StudentProfileForm gains a reusable `ListEditor` for all three. When applying,
+    the form suggests these profile items (plus the CV) as a checklist — ticked
+    items are snapshotted **server-side** from the real profile onto
+    `Application.attachments` (enriched to `{kind, label, detail, link, filename,
+    path}`); the student can also upload files manually. `POST /applications` is now
+    multipart (`upload.array('attachments', 5)`); `applyToInternship` tolerates
+    `selectedItems` as a JSON string (FormData) or array (JSON request). The company
+    sees the attachments on each application card.
+
+16. **Portfolio uploads** (branch `feat/portfolio-uploads`) — a profile portfolio
+    item can be a titled link **or** an uploaded image/file (Upwork-style artifacts).
+    `Student.portfolio` gains `filename`/`path`; dedicated endpoints
+    `POST /students/me/portfolio` (multipart) and `DELETE /students/me/portfolio/:index`
+    manage items, so `portfolio` is no longer part of the bulk profile save.
+    StudentProfileForm gets a `PortfolioManager` card. Uploaded artifacts are
+    selectable as application attachments like any other profile item.
+
+**Verification baseline:** integration suite `server/tests/integration.mjs` is at
+**121/121 passing**; the seed runs `Task.syncIndexes()` to drop the old
+global-unique `taskNumber` index; `npm run build` passes (charts are a separate
+lazy chunk).
+Note: the auth limiter is 50 requests / 15 min — enough for one suite run; restart the
+server (clears the in-memory counter) before re-running, or logins start returning 429.
+
+## Git state & workflow
+
+- Current branch: **`staging`** — all sixteen feature rounds are merged; nothing in progress.
+- `staging` holds Phases 0–13 + the supervisor-workspace, task-deliverables,
+  supervisor-reassignment, task-grading-rules, task-counting-and-workspace,
+  academic-student-email, invitation-message, report-charts, list-filters,
+  dark-mode, application-university-verification, messages-reports-filters,
+  appeal-documents, cv-required, profile-portfolio and portfolio-uploads rounds.
+- `main` is frozen at the Phase 0 merge — **never merge into `main`**.
+- **Every feature has its own branch; none are ever deleted.** Feature branches merge
+  into `staging` with `--no-ff`.
+- **Push status — action needed:** `main` is on GitHub at the Phase 0 merge. `staging`
+  is **~33 commits ahead of `origin/staging` and has NOT been pushed** — every
+  post-phase round (1–16) and its feature branch is local-only and unbacked-up.
+  Pushing `staging` to GitHub is the pending action. Remote:
+  `git@github-bersu:bersu77/Innter-connect.git` — use the `github-bersu` SSH host
+  alias (plain `github.com` resolves to the wrong account). Push with
+  `git push github-bersu staging` (the `origin` remote already points at this URL —
+  `git push origin staging` works too).
+- `.claude/settings.local.json` is intentionally left uncommitted. `DESIGN_BRIEF.md`
+  is an untracked working-tree file (not created by these feature rounds).
+- Commit style: atomic, conventional messages, end with
+  `Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>`.
+
+## How to run / test
+
+- `npm run dev` (repo root) — client `:5173` + server `:5000`.
+- `npm --prefix server run seed` — reset the demo dataset (run before the test suite).
+- `node server/tests/integration.mjs` — the integration suite (server must be running + freshly seeded).
+- `npm run build` — frontend regression gate.
+- Demo logins, password `Password123!`: `admin@internconnect.et`,
+  `coordinator@aau.edu.et` (university), `hr@zemen-tech.et` (company manager),
+  `daniel` (supervisor — **username, not email**), `dawit@aau.edu.et` (student, verified),
+  `alex@aau.edu.et` (student, pending). Other supervisor usernames: `sara`, `liya`, `eden`, `helen`.
+
+## Phase 14 — deferred (not started)
+
+Infrastructure & integrations, per the owner's "infrastructure last" rule: AWS S3,
+SendGrid/SMTP email + Twilio SMS, OAuth 2.0 + 2FA, Redis, MongoDB replica set/sharding,
+Docker, cloud deployment. Until then: local-disk file uploads, in-app-only notifications.
+
+## Notes
+
+- "Supervisor"/"Auditor" are `roles[]` sub-roles, not separate `userType`s (PDF Table 3.1).
+- `Invitation` and `Message` models are implementation details beyond the PDF's named
+  10 collections, added to support required features (FR11/UC006; supervisor chat).
+- An obfuscated malware payload found in `tailwind.config.js` at the start was removed
+  in Phase 0; the repo was scanned — no other file was affected.

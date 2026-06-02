@@ -82,3 +82,49 @@ $env:MONGO_URI = '<the MONGO_URIr value>'; node scripts/syncSchema.js
       `MONGO_URI` key (local + Atlas) plus `MONGO_URIabel` and `MONGO_URIr`. Consolidate
       to one active value to avoid confusion about which DB the app actually uses.
 - [ ] Nothing has been `git commit`/`git push`ed yet — pending user direction.
+
+---
+
+## 2026-06-02 — Render single-Web-Service deploy (fix on `staging`)
+
+### Goal
+Deploy the whole app to **Render as one Web Service**: Express serves the built React
+frontend (`client/dist`) so the entire app runs on one URL.
+
+### Context
+A "WIP: deploying to render" commit (`d2f1a64`) landed on `origin/staging` with broken
+deployment code. This entry records the fix, pushed to `staging`.
+
+### Two bugs fixed in `server/index.js`
+1. **Duplicate `import express`** (declared on two separate lines) → `SyntaxError:
+   Identifier 'express' has already been declared`. The server could not start at all.
+   Removed the duplicate; consolidated the `path` / `url` / `express` imports at the top.
+2. **Static + catch-all registered *after* `notFound`/`errorHandler`** → `notFound`
+   returned a 404 for every non-API route before the catch-all could run, so the React
+   app / deep links were never served. Moved the static-serving and `app.get('*')`
+   catch-all to run **after the API routes but before** `notFound`/`errorHandler`.
+
+### Final working order in `server/index.js`
+1. `__dirname` recreated via `fileURLToPath(import.meta.url)`.
+2. All `/api/*` routes.
+3. `express.static(../client/dist)` + `app.get('*')` → `index.html`, with a guard that
+   lets unmatched `/api/*` fall through (so unknown API routes still return JSON 404,
+   not the HTML shell).
+4. `notFound` + `errorHandler` last.
+5. Listens on `process.env.PORT`.
+   *(Note: static-serving is intentionally NOT gated behind `NODE_ENV` — it always
+   serves `client/dist` if present, matching the team's WIP approach.)*
+
+### Root `package.json`
+`build` → `npm run install:all && npm run build --prefix client` (installs root + client
++ server deps, then builds the frontend). `start` → `npm --prefix server start`.
+
+### Render service settings
+- **Build Command:** `npm run build`
+- **Start Command:** `npm start`
+- **Env vars:** `MONGO_URI`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`,
+  `JWT_ACCESS_EXPIRES`, `JWT_REFRESH_EXPIRES`. Don't set `PORT` (Render injects it).
+
+### Frontend API pathing — no change needed
+Frontend already uses relative `/api` paths (`client/src/api/client.js` `baseURL: '/api'`).
+The only `localhost:5000` is the Vite dev proxy (dev-only). Same-origin in prod → works.

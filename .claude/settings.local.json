@@ -3,7 +3,14 @@
     "allow": [
       "Bash(npm install 2>&1)",
       "Bash(npm run build 2>&1)",
-      "Bash(git rm -r --cached node_modules/ 2>&1 | tail -5)"
+      "Bash(git rm -r --cached node_modules/ 2>&1 | tail -5)",
+      "Bash(dir *)",
+      "Bash(npx vite *)",
+      "Bash(npm install *)",
+      "PowerShell(npm install *)",
+      "PowerShell(npm run *)",
+      "PowerShell(npx vite)",
+      "PowerShell(docker-compose *)"
     ]
   }
 }

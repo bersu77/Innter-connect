@@ -6,8 +6,32 @@ import Footer from './components/Footer'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import DashboardLayout from './layouts/DashboardLayout'
 import DashboardHome from './pages/dashboard/DashboardHome'
+import ProfilePage from './pages/dashboard/ProfilePage'
+import AdminUsersPage from './pages/dashboard/AdminUsersPage'
+import AdminVerificationPage from './pages/dashboard/AdminVerificationPage'
+import StudentVerificationPage from './pages/dashboard/StudentVerificationPage'
+import InternshipsPage from './pages/dashboard/InternshipsPage'
+import InternshipDetailPage from './pages/dashboard/InternshipDetailPage'
+import PostInternshipPage from './pages/dashboard/PostInternshipPage'
+import PartnersPage from './pages/dashboard/PartnersPage'
+import InvitationsPage from './pages/dashboard/InvitationsPage'
+import ApplicationsPage from './pages/dashboard/ApplicationsPage'
+import PlacementsPage from './pages/dashboard/PlacementsPage'
+import TasksPage from './pages/dashboard/TasksPage'
+import AssessmentsPage from './pages/dashboard/AssessmentsPage'
+import ReportsPage from './pages/dashboard/ReportsPage'
+import AuditPage from './pages/dashboard/AuditPage'
+import AccountPage from './pages/dashboard/AccountPage'
+import SupervisorsPage from './pages/dashboard/SupervisorsPage'
+import MessagesPage from './pages/dashboard/MessagesPage'
+import AppealsPage from './pages/dashboard/AppealsPage'
+import ApplicationVerificationPage from './pages/dashboard/ApplicationVerificationPage'
+import NotFoundPage from './pages/NotFoundPage'
+import PublicInternshipsPage from './pages/PublicInternshipsPage'
+import PublicInternshipDetailPage from './pages/PublicInternshipDetailPage'
 
 function App() {
   return (
@@ -27,6 +51,30 @@ function App() {
           />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+
+          {/* Public internship browse — no login required. Apply CTA redirects
+              into the dashboard apply flow (and to /login first if needed). */}
+          <Route
+            path="/internships"
+            element={
+              <>
+                <Navbar />
+                <PublicInternshipsPage />
+                <Footer />
+              </>
+            }
+          />
+          <Route
+            path="/internships/:id"
+            element={
+              <>
+                <Navbar />
+                <PublicInternshipDetailPage />
+                <Footer />
+              </>
+            }
+          />
 
           {/* ── Authenticated workspace ── */}
           <Route
@@ -37,8 +85,34 @@ function App() {
             }
           >
             <Route path="/dashboard" element={<DashboardHome />} />
-            {/* Feature routes (internships, applications, …) are added by later phases. */}
+            <Route path="/dashboard/profile" element={<ProfilePage />} />
+            <Route path="/dashboard/users" element={<AdminUsersPage />} />
+            <Route path="/dashboard/verification" element={<AdminVerificationPage />} />
+            <Route path="/dashboard/students" element={<StudentVerificationPage />} />
+            <Route path="/dashboard/internships" element={<InternshipsPage />} />
+            <Route path="/dashboard/internships/:id" element={<InternshipDetailPage />} />
+            <Route path="/dashboard/post-internship" element={<PostInternshipPage />} />
+            <Route path="/dashboard/post-internship/:id" element={<PostInternshipPage />} />
+            <Route path="/dashboard/partners" element={<PartnersPage />} />
+            <Route path="/dashboard/invitations" element={<InvitationsPage />} />
+            <Route path="/dashboard/applications" element={<ApplicationsPage />} />
+            <Route
+              path="/dashboard/application-verification"
+              element={<ApplicationVerificationPage />}
+            />
+            <Route path="/dashboard/placements" element={<PlacementsPage />} />
+            <Route path="/dashboard/tasks" element={<TasksPage />} />
+            <Route path="/dashboard/assessments" element={<AssessmentsPage />} />
+            <Route path="/dashboard/reports" element={<ReportsPage />} />
+            <Route path="/dashboard/audit" element={<AuditPage />} />
+            <Route path="/dashboard/account" element={<AccountPage />} />
+            <Route path="/dashboard/supervisors" element={<SupervisorsPage />} />
+            <Route path="/dashboard/messages" element={<MessagesPage />} />
+            <Route path="/dashboard/appeals" element={<AppealsPage />} />
           </Route>
+
+          {/* ── Catch-all ── */}
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </AuthProvider>
     </BrowserRouter>

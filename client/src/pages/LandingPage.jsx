@@ -1,782 +1,892 @@
-import { useState, useEffect, useRef } from 'react'
-import { Link } from 'react-router-dom'
+// LandingPage — design-system v2 (Editorial Calm).
+// Section-by-section scroll-choreographed narrative; lifecycle ribbon pins
+// under the nav once the visitor scrolls past the hero. Reveal-on-enter for
+// every section past the hero (prefers-reduced-motion fallback in index.css).
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
-  Search, FileText, CheckCircle, BarChart2, Bell, Shield,
-  GraduationCap, Building2, Award, ArrowRight, Star,
-  ChevronRight, Users, TrendingUp, Zap, Globe,
-  MapPin, Clock, Quote, Sparkles,
-} from 'lucide-react'
+  Briefcase,
+  Building2,
+  UserCheck,
+  Shield,
+  Settings,
+  ScrollText,
+  Gavel,
+  ArrowRight,
+} from 'lucide-react';
+import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
+import Badge from '../components/ui/Badge';
 
-/* ─────────────────────────────────────── Data ─────────────────────────────────────── */
-const features = [
-  {
-    icon: Search,
-    title: 'Smart Internship Discovery',
-    desc: 'Advanced search with filters for location, industry, duration, compensation, and work mode (remote/hybrid/onsite). Full-text search across hundreds of verified listings.',
-    badge: 'For Students',
-    badgeColor: 'bg-teal-100 text-teal-700',
-    iconBg: 'bg-teal-50 text-teal-600',
-  },
-  {
-    icon: FileText,
-    title: 'Streamlined Applications',
-    desc: 'Apply with your profile, CV, and a tailored cover letter. Track every application in real-time from submission to final decision.',
-    badge: 'For Students',
-    badgeColor: 'bg-teal-100 text-teal-700',
-    iconBg: 'bg-emerald-50 text-emerald-600',
-  },
-  {
-    icon: CheckCircle,
-    title: 'Academic Verification',
-    desc: 'Universities verify student academic standing and eligibility. Companies receive trust badges after admin approval, ensuring only legitimate parties interact.',
-    badge: 'For Universities',
-    badgeColor: 'bg-amber-100 text-amber-700',
-    iconBg: 'bg-amber-50 text-amber-600',
-  },
-  {
-    icon: BarChart2,
-    title: 'Analytics & Reporting',
-    desc: 'Comprehensive dashboards with placement trends, application metrics, and exportable reports in PDF, Excel, or CSV formats for compliance and accreditation.',
-    badge: 'For Universities',
-    badgeColor: 'bg-amber-100 text-amber-700',
-    iconBg: 'bg-amber-50 text-amber-600',
-  },
-  {
-    icon: Bell,
-    title: 'Real-time Notifications',
-    desc: 'Stay informed with multi-channel alerts via in-app, email, and SMS for application updates, interview schedules, deadlines, and offer notifications.',
-    badge: 'All Users',
-    badgeColor: 'bg-amber-100 text-amber-700',
-    iconBg: 'bg-amber-50 text-amber-600',
-  },
-  {
-    icon: Shield,
-    title: 'Audit & Compliance',
-    desc: 'Immutable audit logs track every action on the platform. Complete oversight for regulatory compliance, institutional reporting, and accreditation requirements.',
-    badge: 'For Admins',
-    badgeColor: 'bg-rose-100 text-rose-700',
-    iconBg: 'bg-rose-50 text-rose-600',
-  },
-]
+const STAGES = ['Post', 'Discover', 'Apply', 'Verify', 'Review', 'Place', 'Supervise', 'Complete'];
 
-const howItWorksData = {
-  students: [
-    {
-      step: '01',
-      title: 'Build Your Profile',
-      desc: 'Register, complete your academic profile, upload your CV, add skills & certifications, and get verified by your university.',
-      icon: GraduationCap,
-    },
-    {
-      step: '02',
-      title: 'Discover & Apply',
-      desc: 'Search and filter hundreds of internship listings by industry, location, duration, and work mode. Apply with one click.',
-      icon: Search,
-    },
-    {
-      step: '03',
-      title: 'Get Placed',
-      desc: 'Track your applications in real-time, receive interview invitations, accept offers, and launch your career with confidence.',
-      icon: Award,
-    },
-  ],
-  companies: [
-    {
-      step: '01',
-      title: 'Register & Get Verified',
-      desc: 'Create your company profile, submit for admin verification, and get approved to post internship opportunities on the platform.',
-      icon: Building2,
-    },
-    {
-      step: '02',
-      title: 'Post Opportunities',
-      desc: 'Create detailed internship listings with requirements, compensation details, work mode, and application deadlines.',
-      icon: FileText,
-    },
-    {
-      step: '03',
-      title: 'Hire Top Talent',
-      desc: 'Review applicants, shortlist candidates, schedule interviews, extend offers, and track confirmed placements.',
-      icon: Users,
-    },
-  ],
-  universities: [
-    {
-      step: '01',
-      title: 'Register Institution',
-      desc: 'Onboard your university with accreditation details. Set up departments, assign supervisors, and manage admin accounts.',
-      icon: Award,
-    },
-    {
-      step: '02',
-      title: 'Verify & Supervise',
-      desc: 'Verify student academic standing, approve internship eligibility, assign supervisors, and monitor active placements.',
-      icon: CheckCircle,
-    },
-    {
-      step: '03',
-      title: 'Generate Reports',
-      desc: 'Access comprehensive placement analytics and export compliance reports for accreditation and institutional review.',
-      icon: BarChart2,
-    },
-  ],
+// ── Constellation — five role nodes orbiting the lifecycle hub ──────────────
+function Constellation({ size = 420 }) {
+  const NODES = [
+    { label: 'Student',    a: -90, color: 'var(--brand-500)' },
+    { label: 'Company',    a: -18, color: 'var(--amber-500)' },
+    { label: 'Supervisor', a:  54, color: 'var(--brand-400)' },
+    { label: 'University', a: 126, color: 'var(--success-500)' },
+    { label: 'Admin',      a: 198, color: 'var(--stone-700)' },
+  ];
+  const r = size * 0.38;
+  return (
+    <div style={{ width: size, height: size, position: 'relative' }}>
+      <svg viewBox={`0 0 ${size} ${size}`} style={{ position: 'absolute', inset: 0 }}>
+        <circle cx={size / 2} cy={size / 2} r={r}        fill="none" stroke="var(--border-default)" strokeDasharray="3 5" />
+        <circle cx={size / 2} cy={size / 2} r={r * 0.6}  fill="none" stroke="var(--border-default)" strokeDasharray="3 5" />
+        {NODES.map((n, i) => {
+          const rad = (n.a * Math.PI) / 180;
+          const x = size / 2 + Math.cos(rad) * r;
+          const y = size / 2 + Math.sin(rad) * r;
+          return (
+            <line
+              key={i}
+              x1={size / 2}
+              y1={size / 2}
+              x2={x}
+              y2={y}
+              stroke="var(--border-default)"
+              strokeWidth="1"
+            />
+          );
+        })}
+      </svg>
+      {NODES.map((n, i) => {
+        const rad = (n.a * Math.PI) / 180;
+        const x = size / 2 + Math.cos(rad) * r;
+        const y = size / 2 + Math.sin(rad) * r;
+        return (
+          <div
+            key={i}
+            style={{
+              position: 'absolute',
+              width: 88,
+              height: 88,
+              borderRadius: 999,
+              left: x - 44,
+              top: y - 44,
+              background: 'var(--bg-raised)',
+              boxShadow: 'var(--shadow-3), 0 0 0 1px var(--border-default)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 2,
+              animation: `floatY 6s ease-in-out ${i * 0.5}s infinite`,
+            }}
+          >
+            <span style={{ width: 8, height: 8, borderRadius: 999, background: n.color }} />
+            <span
+              className="t-mono"
+              style={{
+                fontSize: 10,
+                letterSpacing: '0.14em',
+                textTransform: 'uppercase',
+                color: 'var(--text-tertiary)',
+                fontWeight: 500,
+              }}
+            >
+              {n.label}
+            </span>
+          </div>
+        );
+      })}
+      <div
+        style={{
+          position: 'absolute',
+          width: 132,
+          height: 132,
+          borderRadius: 999,
+          left: size / 2 - 66,
+          top: size / 2 - 66,
+          background: 'var(--stone-900)',
+          color: 'var(--stone-50)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: 'var(--shadow-4)',
+        }}
+      >
+        <span
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 28,
+            lineHeight: 1,
+            fontStyle: 'italic',
+          }}
+        >
+          Internship
+        </span>
+        <span
+          className="t-mono"
+          style={{
+            fontSize: 10,
+            letterSpacing: '0.18em',
+            textTransform: 'uppercase',
+            color: 'var(--stone-400)',
+            marginTop: 4,
+          }}
+        >
+          Lifecycle
+        </span>
+      </div>
+    </div>
+  );
 }
 
-const roleData = [
-  {
-    id: 'for-students',
-    title: 'For Students',
-    subtitle: 'Launch your career with confidence',
-    icon: GraduationCap,
-    color: { bg: 'bg-teal-600', shadow: 'shadow-teal-200', border: 'border-teal-100', gradient: 'from-teal-50', hover: 'hover:shadow-teal-100', btn: 'bg-teal-600 hover:bg-teal-700' },
-    benefits: [
-      'Browse & filter verified internship listings',
-      'One-click apply using your InternConnect profile',
-      'Real-time application status tracking',
-      'University-verified academic badge',
-      'Skills & certification showcase',
-      'Interview scheduling & smart notifications',
-    ],
-    cta: 'Start as Student',
-  },
-  {
-    id: 'for-companies',
-    title: 'For Companies',
-    subtitle: 'Find the talent of tomorrow, today',
-    icon: Building2,
-    color: { bg: 'bg-emerald-700', shadow: 'shadow-emerald-200', border: 'border-emerald-100', gradient: 'from-emerald-50', hover: 'hover:shadow-emerald-100', btn: 'bg-emerald-700 hover:bg-emerald-800' },
-    benefits: [
-      'Post verified internship opportunities',
-      'Access pre-verified student profiles',
-      'Smart applicant filtering & scoring',
-      'Integrated interview management tools',
-      'Offer tracking & confirmation',
-      'Placement analytics & hiring metrics',
-    ],
-    cta: 'Post Internships',
-  },
-  {
-    id: 'for-universities',
-    title: 'For Universities',
-    subtitle: "Empower your students' futures",
-    icon: Award,
-    color: { bg: 'bg-amber-600', shadow: 'shadow-amber-200', border: 'border-amber-100', gradient: 'from-amber-50', hover: 'hover:shadow-amber-100', btn: 'bg-amber-600 hover:bg-amber-700' },
-    benefits: [
-      'Student academic verification system',
-      'Monitor all internship placements',
-      'Supervisor assignment & tracking tools',
-      'Compliance & audit trail reports',
-      'Bulk student management dashboard',
-      'Export reports in PDF / Excel / CSV',
-    ],
-    cta: 'Join as University',
-  },
-]
+// ── Lifecycle ribbon pinned under the nav once past the hero ────────────────
+function LifecycleRibbon({ stage, visible }) {
+  const bounded = Math.min(STAGES.length - 1, Math.max(0, stage));
+  return (
+    <div
+      aria-hidden={!visible}
+      className="hidden md:block"
+      style={{
+        position: 'fixed',
+        top: 64,
+        left: 0,
+        right: 0,
+        zIndex: 40,
+        background: 'color-mix(in srgb, var(--bg-paper) 90%, transparent)',
+        backdropFilter: 'blur(var(--blur-md))',
+        WebkitBackdropFilter: 'blur(var(--blur-md))',
+        borderBottom: '1px solid var(--border-subtle)',
+        transform: visible ? 'translateY(0)' : 'translateY(-100%)',
+        opacity: visible ? 1 : 0,
+        pointerEvents: visible ? 'auto' : 'none',
+        transition: 'transform var(--dur-panel) var(--ease-soft), opacity var(--dur-panel) var(--ease-soft)',
+      }}
+    >
+      <div
+        className="mx-auto flex items-center"
+        style={{
+          maxWidth: 'var(--content-max)',
+          padding: '12px var(--content-pad-x)',
+          gap: 16,
+        }}
+      >
+        <span className="t-eyebrow" style={{ marginRight: 'auto' }}>
+          Now reading · stage {String(bounded + 1).padStart(2, '0')} · {STAGES[bounded]}
+        </span>
+        <div
+          className="hidden lg:grid"
+          style={{ gridTemplateColumns: `repeat(${STAGES.length}, 1fr)`, gap: 6, width: 360 }}
+        >
+          {STAGES.map((s, i) => (
+            <div
+              key={s}
+              style={{
+                height: 6,
+                borderRadius: 999,
+                background: i <= bounded ? 'var(--brand-500)' : 'var(--stone-200)',
+                transition: 'background-color var(--dur-base) var(--ease-emphasis)',
+              }}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
-const sampleListings = [
-  {
-    company: 'Google',
-    logo: 'G',
-    role: 'Software Engineering Intern',
-    location: 'Remote',
-    duration: '3 months',
-    type: 'Paid',
-    tags: ['Python', 'ML', 'React'],
-    logoColor: 'bg-teal-600',
-  },
-  {
-    company: 'McKinsey & Co.',
-    logo: 'M',
-    role: 'Business Analyst Intern',
-    location: 'New York, USA',
-    duration: '6 months',
-    type: 'Paid',
-    tags: ['Finance', 'Strategy', 'Excel'],
-    logoColor: 'bg-stone-700',
-  },
-  {
-    company: 'WHO',
-    logo: 'W',
-    role: 'Public Health Research Intern',
-    location: 'Geneva, CH',
-    duration: '4 months',
-    type: 'Stipend',
-    tags: ['Healthcare', 'Research', 'Data'],
-    logoColor: 'bg-emerald-700',
-  },
-  {
-    company: 'Microsoft',
-    logo: 'MS',
-    role: 'Cloud Solutions Intern',
-    location: 'Seattle, USA',
-    duration: '3 months',
-    type: 'Paid',
-    tags: ['Azure', 'DevOps', 'TypeScript'],
-    logoColor: 'bg-teal-700',
-  },
-  {
-    company: 'UNICEF',
-    logo: 'U',
-    role: 'Program Management Intern',
-    location: 'Nairobi, KE',
-    duration: '6 months',
-    type: 'Stipend',
-    tags: ['NGO', 'Policy', 'Research'],
-    logoColor: 'bg-amber-600',
-  },
-  {
-    company: 'Deloitte',
-    logo: 'D',
-    role: 'Consulting Intern',
-    location: 'London, UK',
-    duration: '4 months',
-    type: 'Paid',
-    tags: ['Consulting', 'Analytics', 'Strategy'],
-    logoColor: 'bg-emerald-600',
-  },
-]
+// ── Hero left column ───────────────────────────────────────────────────────
+function HeroLeft() {
+  return (
+    <div>
+      <span className="t-eyebrow">
+        Internship workspace · for universities &amp; companies
+      </span>
+      <h1
+        style={{
+          fontFamily: 'var(--font-display)',
+          fontSize: 'clamp(48px, 6vw, 76px)',
+          lineHeight: 0.98,
+          letterSpacing: '-0.025em',
+          margin: '14px 0 0',
+          fontWeight: 400,
+          animation: 'lc-hero-up 700ms var(--ease-soft) 80ms backwards',
+        }}
+      >
+        The shortest path<br />
+        from <span style={{ fontStyle: 'italic', color: 'var(--brand-500)' }}>classroom</span>
+        <br />
+        to <span style={{ fontStyle: 'italic', color: 'var(--amber-500)' }}>first job</span>.
+      </h1>
+      <p
+        className="t-body-lg"
+        style={{
+          color: 'var(--text-secondary)',
+          marginTop: 22,
+          maxWidth: 420,
+          animation: 'lc-hero-up 700ms var(--ease-soft) 140ms backwards',
+        }}
+      >
+        One workspace. Five roles. The full internship lifecycle, finally calm.
+      </p>
+      <div
+        className="flex flex-wrap"
+        style={{
+          marginTop: 24,
+          gap: 10,
+          animation: 'lc-hero-up 700ms var(--ease-soft) 200ms backwards',
+        }}
+      >
+        <Link to="/register">
+          <Button variant="primary" pill size="lg" trailing={<ArrowRight size={16} strokeWidth={1.8} />}>
+            Start as a student
+          </Button>
+        </Link>
+        <Link to="/register">
+          <Button variant="secondary" pill size="lg">For companies</Button>
+        </Link>
+      </div>
+      <style>{`
+        @keyframes lc-hero-up {
+          from { opacity: 0; transform: translateY(20px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </div>
+  );
+}
 
-const testimonials = [
-  {
-    name: 'Amina Yusuf',
-    role: 'Computer Science Student',
-    org: 'University of Nairobi',
-    quote: 'InternConnect made finding my dream internship at a top tech company feel effortless. The application tracking saved me so much stress!',
-    initials: 'AY',
-    color: 'bg-teal-600',
-  },
-  {
-    name: 'Daniel Mensah',
-    role: 'HR Manager',
-    org: 'Safaricom',
-    quote: 'We cut our intern recruitment time in half. The verified student profiles mean we spend less time screening and more time connecting.',
-    initials: 'DM',
-    color: 'bg-emerald-600',
-  },
-  {
-    name: 'Prof. Sarah Chen',
-    role: 'Career Services Director',
-    org: 'MIT',
-    quote: 'The reporting tools are phenomenal. We now have real-time placement data for our accreditation reviews instead of chasing spreadsheets.',
-    initials: 'SC',
-    color: 'bg-amber-600',
-  },
-  {
-    name: 'Kwame Asante',
-    role: 'Engineering Intern',
-    org: 'Google',
-    quote: 'I applied to 12 internships in one afternoon. The smart filters helped me find exactly what matched my skills and interests.',
-    initials: 'KA',
-    color: 'bg-teal-700',
-  },
-  {
-    name: 'Elena Rodriguez',
-    role: 'Talent Acquisition Lead',
-    org: 'Deloitte',
-    quote: 'The platform brings us pre-verified candidates from top universities. The quality of applicants has increased significantly.',
-    initials: 'ER',
-    color: 'bg-emerald-700',
-  },
-  {
-    name: 'Dr. James Okoro',
-    role: 'Dean of Students',
-    org: 'University of Lagos',
-    quote: 'We went from manually tracking placements in Excel to real-time dashboards. Our compliance reporting is now automated.',
-    initials: 'JO',
-    color: 'bg-amber-700',
-  },
-  {
-    name: 'Fatima Al-Rashid',
-    role: 'Data Science Intern',
-    org: 'McKinsey',
-    quote: 'The university verification badge on my profile gave employers confidence in my credentials. I got three interview calls in a week!',
-    initials: 'FA',
-    color: 'bg-teal-600',
-  },
-  {
-    name: 'Tom Nguyen',
-    role: 'Startup Founder',
-    org: 'TechBridge',
-    quote: 'As a small startup, we struggled to attract interns. InternConnect leveled the playing field — we now compete alongside Fortune 500s.',
-    initials: 'TN',
-    color: 'bg-emerald-600',
-  },
-  {
-    name: 'Dr. Priya Sharma',
-    role: 'Internship Coordinator',
-    org: 'IIT Delhi',
-    quote: 'Managing 2,000+ student placements was a nightmare before InternConnect. Now supervisors can track everything from one dashboard.',
-    initials: 'PS',
-    color: 'bg-amber-600',
-  },
-  {
-    name: 'Marcus Johnson',
-    role: 'Marketing Intern',
-    org: 'UNICEF',
-    quote: 'The notification system kept me updated at every stage. I never had to wonder about my application status — it was all right there.',
-    initials: 'MJ',
-    color: 'bg-teal-700',
-  },
-]
+// ── For-students mock: a single internship row card ────────────────────────
+function InternshipCardMock() {
+  return (
+    <Card elevated style={{ padding: 18 }}>
+      <div className="flex" style={{ gap: 12, marginBottom: 10, alignItems: 'flex-start' }}>
+        <span
+          aria-hidden
+          style={{
+            width: 36,
+            height: 36,
+            borderRadius: 8,
+            background: 'var(--brand-100)',
+            color: 'var(--brand-700)',
+            fontWeight: 600,
+            fontSize: 13,
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          AC
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 22,
+              lineHeight: 1.1,
+              fontWeight: 400,
+            }}
+          >
+            Frontend Engineering Intern
+          </div>
+          <div className="t-caption" style={{ marginTop: 2 }}>
+            Acme Co · Addis Ababa · 12 wks
+          </div>
+        </div>
+        <Badge tone="brand">new</Badge>
+      </div>
+      <div className="flex flex-wrap" style={{ gap: 6, marginBottom: 14 }}>
+        <Badge tone="neutral">React</Badge>
+        <Badge tone="neutral">TypeScript</Badge>
+        <Badge tone="neutral">Figma</Badge>
+      </div>
+      <p className="t-body-md" style={{ color: 'var(--text-secondary)', margin: 0 }}>
+        Build internal tools alongside the design-system team. Ship to production weekly.
+      </p>
+      <div className="flex flex-wrap" style={{ gap: 8, marginTop: 14, alignItems: 'center' }}>
+        <Button variant="primary" size="sm" pill trailing={<ArrowRight size={14} strokeWidth={1.8} />}>
+          Apply
+        </Button>
+        <Button variant="ghost" size="sm">Save</Button>
+        <span className="t-mono muted" style={{ marginLeft: 'auto' }}>closes in 6d</span>
+      </div>
+    </Card>
+  );
+}
 
-/* ─────────────────────────────────────── Component ─────────────────────────────────────── */
+// ── For-companies mock: pipeline grid ──────────────────────────────────────
+function PipelineMock() {
+  const stages = [
+    ['New',    12, 'brand'],
+    ['Review',  8, 'warning'],
+    ['Offer',   3, 'amber'],
+    ['Placed',  2, 'success'],
+  ];
+  return (
+    <Card elevated style={{ padding: 18 }}>
+      <span className="t-eyebrow">Pipeline · Frontend Intern</span>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
+          gap: 8,
+          marginTop: 12,
+        }}
+      >
+        {stages.map(([l, n, tone]) => (
+          <div
+            key={l}
+            style={{
+              padding: 12,
+              background: 'var(--bg-subtle)',
+              borderRadius: 'var(--radius-md)',
+            }}
+          >
+            <span className="t-eyebrow">{l}</span>
+            <div
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 32,
+                lineHeight: 1,
+                fontWeight: 400,
+                marginTop: 4,
+              }}
+            >
+              {n}
+            </div>
+            <div style={{ marginTop: 6 }}>
+              <Badge tone={tone}>{l.toLowerCase()}</Badge>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+// ── For-universities mock: placement-rate stat + tiny bar chart ────────────
+function PlacementRateMock() {
+  const bars = [36, 52, 48, 70, 60, 86, 78, 92];
+  return (
+    <Card elevated style={{ padding: 20 }}>
+      <span className="t-eyebrow">Cohort 2026 · placement rate</span>
+      <div className="flex" style={{ alignItems: 'baseline', marginTop: 8, gap: 12 }}>
+        <span
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 56,
+            lineHeight: 1,
+            fontWeight: 400,
+          }}
+        >
+          92
+          <span style={{ fontSize: 28, color: 'var(--text-tertiary)' }}>%</span>
+        </span>
+        <Badge tone="success">+3 pts</Badge>
+      </div>
+      <div
+        style={{
+          marginTop: 18,
+          height: 90,
+          display: 'flex',
+          alignItems: 'flex-end',
+          gap: 8,
+        }}
+      >
+        {bars.map((h, i) => (
+          <div
+            key={i}
+            style={{
+              flex: 1,
+              height: `${h}%`,
+              background: i === bars.length - 1 ? 'var(--brand-500)' : 'var(--brand-200)',
+              borderRadius: '4px 4px 0 0',
+              transition: 'background-color var(--dur-base) var(--ease-emphasis)',
+            }}
+          />
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+// ── Page ────────────────────────────────────────────────────────────────────
 export default function LandingPage() {
-  const [activeTab, setActiveTab] = useState('students')
-  const scrollRef = useRef(null)
+  const [stage, setStage] = useState(-1);            // active section index — drives reveal classes + ribbon visibility
+  const [ribbonStage, setRibbonStage] = useState(0); // scroll-driven stage 0…7 — fills the ribbon segments
+  const refs = useRef([]);
 
-  // IntersectionObserver for scroll-triggered animations
+  // Section-level IntersectionObserver — flips the reveal class on enter and
+  // tracks which section is currently in view (drives ribbon visibility).
   useEffect(() => {
-    const observer = new IntersectionObserver(
+    if (typeof IntersectionObserver === 'undefined') return undefined;
+    const obs = new IntersectionObserver(
       (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('is-visible')
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            const i = Number(e.target.dataset.section);
+            if (Number.isFinite(i)) setStage(i);
+            e.target.classList.add('is-in');
           }
-        })
+        });
       },
-      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
-    )
+      { threshold: 0.35 },
+    );
+    refs.current.forEach((el) => el && obs.observe(el));
+    return () => obs.disconnect();
+  }, []);
 
-    const elements = document.querySelectorAll('.animate-on-scroll')
-    elements.forEach((el) => observer.observe(el))
+  // Scroll-driven ribbon stage — advances continuously through ALL 8 stages
+  // from the end of the hero to the start of the final CTA, so every stage
+  // (Post → Complete) is reached even though there are only 6 narrative
+  // sections between them.
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    let raf = 0;
+    function recompute() {
+      raf = 0;
+      const startEl = refs.current[1]; // top of "Lifecycle" section
+      const endEl = refs.current[7];   // top of "Final CTA" section
+      if (!startEl || !endEl) return;
+      const startY = startEl.getBoundingClientRect().top + window.scrollY;
+      const endY = endEl.getBoundingClientRect().top + window.scrollY;
+      const span = endY - startY;
+      if (span <= 0) return;
+      const probe = window.scrollY + window.innerHeight * 0.5;
+      const frac = Math.max(0, Math.min(1, (probe - startY) / span));
+      const idx = Math.min(STAGES.length - 1, Math.floor(frac * STAGES.length));
+      setRibbonStage(idx);
+    }
+    function onScroll() {
+      if (raf) return;
+      raf = requestAnimationFrame(recompute);
+    }
+    recompute();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', recompute);
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', recompute);
+    };
+  }, []);
 
-    return () => observer.disconnect()
-  }, [])
+  // Ribbon attaches once the user has scrolled past the hero (any section ≥ 1)
+  // and stays until they reach the final CTA, so all 8 stages get shown.
+  const ribbonVisible = stage >= 1 && stage <= 6;
 
-  // Duplicate arrays for seamless marquee loop
-  const featureCards = [...features, ...features]
-  const listingCards = [...sampleListings, ...sampleListings]
-  const testimonialsRow1 = [...testimonials.slice(0, 5), ...testimonials.slice(0, 5)]
-  const testimonialsRow2 = [...testimonials.slice(5), ...testimonials.slice(5)]
+  const setRef = (i) => (el) => { refs.current[i] = el; };
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* ── Hero ── */}
-      <section className="relative bg-gradient-to-br from-teal-950 via-teal-900 to-teal-800 pt-32 pb-28 overflow-hidden">
-        {/* Decorative blobs */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-teal-600/25 rounded-full blur-3xl" />
-          <div className="absolute -bottom-20 -left-40 w-[400px] h-[400px] bg-emerald-600/25 rounded-full blur-3xl" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[900px] h-[400px] bg-teal-800/20 rounded-full blur-3xl" />
-        </div>
+    <div
+      style={{
+        background: 'var(--bg-paper)',
+        color: 'var(--text-primary)',
+        paddingTop: 64,
+      }}
+    >
+      <LifecycleRibbon stage={ribbonStage} visible={ribbonVisible} />
 
-        {/* Floating decorative dots */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-[15%] w-3 h-3 bg-amber-400/40 rounded-full animate-float" />
-          <div className="absolute top-40 right-[20%] w-2 h-2 bg-teal-300/50 rounded-full animate-float-delayed" />
-          <div className="absolute bottom-32 left-[25%] w-2.5 h-2.5 bg-amber-300/30 rounded-full animate-float" />
-          <div className="absolute bottom-20 right-[30%] w-2 h-2 bg-emerald-300/40 rounded-full animate-float-delayed" />
+      {/* ── Section 01 · Hero ─────────────────────────────────────────── */}
+      <section
+        ref={setRef(0)}
+        data-section="0"
+        className="mx-auto grid grid-cols-1 items-center gap-8 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:gap-10"
+        style={{
+          maxWidth: 'var(--content-max)',
+          padding: 'clamp(48px, 8vw, 80px) var(--content-pad-x) clamp(40px, 6vw, 64px)',
+        }}
+      >
+        <HeroLeft />
+        <div className="hidden md:flex" style={{ justifyContent: 'center' }}>
+          <Constellation size={420} />
         </div>
+      </section>
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-4xl mx-auto">
-            {/* Editorial accent line */}
-            <div className="inline-flex items-center gap-3 mb-8">
-              <div className="w-8 h-px bg-amber-400" />
-              <span className="text-teal-200 text-sm font-semibold tracking-widest uppercase">
-                Internship Platform
+      {/* ── Section 02 · Lifecycle ───────────────────────────────────── */}
+      <section
+        ref={setRef(1)}
+        data-section="1"
+        className="reveal mx-auto"
+        style={{
+          maxWidth: 'var(--content-max)',
+          padding: 'clamp(56px, 8vw, 80px) var(--content-pad-x)',
+        }}
+      >
+        <span className="t-eyebrow">The lifecycle</span>
+        <h2
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(36px, 4.5vw, 56px)',
+            lineHeight: 1,
+            letterSpacing: '-0.022em',
+            margin: '8px 0 14px',
+            fontWeight: 400,
+            maxWidth: 720,
+          }}
+        >
+          Eight steps from{' '}
+          <span style={{ fontStyle: 'italic', color: 'var(--amber-500)' }}>posted</span> to{' '}
+          <span style={{ fontStyle: 'italic', color: 'var(--brand-500)' }}>placed</span>.
+        </h2>
+        <p className="t-body-lg" style={{ color: 'var(--text-secondary)', maxWidth: 560 }}>
+          Each stage gets its own surface in the app. Verification, supervision and assessment are
+          threaded through. Nothing happens off-platform.
+        </p>
+        <div
+          style={{
+            marginTop: 36,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
+            gap: 16,
+          }}
+        >
+          {STAGES.map((s, i) => (
+            <div
+              key={s}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 10,
+              }}
+            >
+              <div
+                style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 999,
+                  background: i < 3 ? 'var(--brand-500)' : 'var(--bg-raised)',
+                  color: i < 3 ? '#fff' : 'var(--text-primary)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: 'var(--shadow-2), 0 0 0 1px var(--border-default)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 13,
+                }}
+              >
+                {String(i + 1).padStart(2, '0')}
+              </div>
+              <span style={{ fontFamily: 'var(--font-display)', fontSize: 17, lineHeight: 1, textAlign: 'center' }}>
+                {s}
               </span>
-              <div className="w-8 h-px bg-amber-400" />
             </div>
+          ))}
+        </div>
+      </section>
 
-            {/* Headline */}
-            <h1 className="text-5xl md:text-7xl font-black text-white leading-[1.08] mb-6 tracking-tight">
-              Connect. Grow.{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-200 to-teal-200">
-                Succeed.
+      {/* ── Section 03 · Five roles ──────────────────────────────────── */}
+      <section
+        ref={setRef(2)}
+        data-section="2"
+        className="reveal mx-auto"
+        style={{
+          maxWidth: 'var(--content-max)',
+          padding: 'clamp(56px, 8vw, 80px) var(--content-pad-x)',
+        }}
+      >
+        <span className="t-eyebrow">One workspace · five roles</span>
+        <h2
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(36px, 4.5vw, 56px)',
+            lineHeight: 1,
+            letterSpacing: '-0.022em',
+            margin: '8px 0 0',
+            fontWeight: 400,
+            maxWidth: 640,
+          }}
+        >
+          Built for the people who actually run an internship.
+        </h2>
+        <div
+          style={{
+            marginTop: 36,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+            gap: 14,
+          }}
+        >
+          {[
+            { role: 'Student',    Icon: Briefcase,  blurb: 'Discover, apply, do the work.',       tone: 'brand',  offset: 4 },
+            { role: 'Company',    Icon: Building2,  blurb: 'Post roles, run placements.',         tone: 'amber',  offset: -4 },
+            { role: 'Supervisor', Icon: UserCheck,  blurb: 'Mentor with structure.',              tone: 'sage',   offset: 4 },
+            { role: 'University', Icon: Shield,     blurb: 'Verify, vet, oversee.',               tone: 'brand',  offset: -4 },
+            { role: 'Admin',      Icon: Settings,   blurb: 'Govern accounts & the audit log.',    tone: 'stone',  offset: 4 },
+          ].map(({ role, Icon, blurb, tone, offset }) => (
+            <Card
+              key={role}
+              style={{ padding: 20, transform: `translateY(${offset}px)` }}
+            >
+              <span
+                aria-hidden
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  background:
+                    tone === 'amber' ? 'var(--amber-100)' :
+                    tone === 'sage'  ? 'var(--success-100)' :
+                    tone === 'stone' ? 'var(--stone-200)' :
+                                       'var(--brand-100)',
+                  color:
+                    tone === 'amber' ? 'var(--amber-700)' :
+                    tone === 'sage'  ? 'var(--success-700)' :
+                    tone === 'stone' ? 'var(--stone-700)' :
+                                       'var(--brand-700)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon size={16} strokeWidth={1.6} />
               </span>
-            </h1>
-
-            <p className="text-xl text-teal-200/90 max-w-2xl mx-auto mb-10 leading-relaxed">
-              InternConnect brings students, universities, and companies together on one trusted
-              platform — making internship management effortless and transparent.
-            </p>
-
-            {/* CTAs */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-20">
-              <Link
-                to="/register"
-                className="group flex items-center justify-center gap-2 bg-white text-teal-900 font-bold px-8 py-4 rounded-2xl hover:bg-teal-50 transition-all shadow-2xl shadow-teal-950/50 hover:scale-[1.02] active:scale-[0.98]"
+              <div className="t-display-sm" style={{ marginTop: 12 }}>{role}</div>
+              <p
+                className="t-body-sm"
+                style={{ color: 'var(--text-secondary)', marginTop: 6, marginBottom: 0 }}
               >
-                <GraduationCap size={20} />
-                I'm a Student
-                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <Link
-                to="/register"
-                className="group flex items-center justify-center gap-2 bg-teal-700/50 hover:bg-teal-700 border border-teal-500/50 text-white font-bold px-8 py-4 rounded-2xl transition-all backdrop-blur hover:scale-[1.02] active:scale-[0.98]"
-              >
-                <Building2 size={20} />
-                Company / University
-                <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
-              </Link>
-            </div>
-
-            {/* Stats strip */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-teal-700/30 rounded-2xl overflow-hidden border border-teal-700/30">
-              {[
-                { number: '10,000+', label: 'Active Students', icon: Users },
-                { number: '500+', label: 'Partner Companies', icon: Building2 },
-                { number: '100+', label: 'Universities', icon: Award },
-                { number: '95%', label: 'Placement Rate', icon: TrendingUp },
-              ].map(({ number, label }) => (
-                <div key={label} className="bg-teal-900/60 backdrop-blur px-6 py-7 text-center">
-                  <div className="text-3xl font-black text-white mb-1">{number}</div>
-                  <div className="text-teal-300 text-sm font-medium">{label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
+                {blurb}
+              </p>
+            </Card>
+          ))}
         </div>
       </section>
 
-      {/* ── Features (Marquee) ── */}
-      <section id="features" className="py-28 bg-stone-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-16">
-          <div className="text-center animate-on-scroll">
-            <div className="inline-flex items-center gap-2 bg-teal-50 text-teal-700 text-sm font-semibold px-4 py-2 rounded-full mb-4">
-              <Zap size={14} />
-              Powerful Features
-            </div>
-            <h2 className="text-4xl md:text-5xl font-black text-stone-900 mb-5">
-              Everything in One Place
-            </h2>
-            <p className="text-lg text-stone-600 max-w-2xl mx-auto">
-              From first application to final placement, InternConnect handles every step of the
-              internship journey.
-            </p>
-          </div>
-        </div>
-
-        <div className="marquee-container">
-          <div className="marquee-track">
-            {featureCards.map((f, i) => {
-              const Icon = f.icon
-              return (
-                <div
-                  key={`${f.title}-${i}`}
-                  className="w-80 flex-shrink-0 mx-3 group bg-white rounded-2xl p-8 border border-stone-200 hover:border-teal-200 hover:shadow-xl hover:shadow-teal-50 transition-all duration-300"
-                >
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 ${f.iconBg}`}>
-                    <Icon size={22} />
-                  </div>
-                  <h3 className="font-bold text-stone-900 mb-3 text-lg">{f.title}</h3>
-                  <p className="text-stone-600 text-sm leading-relaxed mb-5">{f.desc}</p>
-                  <span className={`inline-flex text-xs font-semibold px-2.5 py-1 rounded-full ${f.badgeColor}`}>
-                    {f.badge}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ── How It Works ── */}
-      <section id="how-it-works" className="py-28 bg-stone-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12 animate-on-scroll">
-            <div className="inline-flex items-center gap-2 bg-teal-50 text-teal-700 text-sm font-semibold px-4 py-2 rounded-full mb-4">
-              <Globe size={14} />
-              Designed for Everyone
-            </div>
-            <h2 className="text-4xl md:text-5xl font-black text-stone-900 mb-5">
-              How InternConnect Works
-            </h2>
-            <p className="text-lg text-stone-600 max-w-xl mx-auto">
-              A simple yet powerful process tailored for each stakeholder.
-            </p>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex justify-center mb-14">
-            <div className="inline-flex bg-white border border-stone-200 rounded-2xl p-1.5 gap-1 shadow-sm">
-              {[
-                { id: 'students', label: 'Students', icon: GraduationCap },
-                { id: 'companies', label: 'Companies', icon: Building2 },
-                { id: 'universities', label: 'Universities', icon: Award },
-              ].map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => setActiveTab(id)}
-                  className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold transition-all ${
-                    activeTab === id
-                      ? 'bg-teal-600 text-white shadow-md'
-                      : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
-                  }`}
-                >
-                  <Icon size={16} />
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Steps */}
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {howItWorksData[activeTab].map((step, idx, arr) => {
-              const StepIcon = step.icon
-              return (
-                <div key={step.step} className="relative flex flex-col items-center text-center group animate-on-scroll">
-                  {idx < arr.length - 1 && (
-                    <div className="hidden md:block absolute top-10 left-[calc(50%+3rem)] right-[calc(-50%+3rem)] h-px bg-gradient-to-r from-teal-200 to-teal-100 z-0" />
-                  )}
-                  <div className="relative z-10 w-20 h-20 bg-teal-600 rounded-2xl flex flex-col items-center justify-center mb-6 shadow-lg shadow-teal-200 group-hover:bg-teal-500 transition-colors">
-                    <span className="text-xs font-bold text-teal-200 leading-none mb-1">{step.step}</span>
-                    <StepIcon size={22} className="text-white" />
-                  </div>
-                  <h3 className="text-lg font-bold text-stone-900 mb-3">{step.title}</h3>
-                  <p className="text-stone-600 text-sm leading-relaxed">{step.desc}</p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Testimonials (NEW) ── */}
-      <section className="py-28 bg-stone-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-14">
-          <div className="text-center animate-on-scroll">
-            <div className="inline-flex items-center gap-2 bg-amber-50 text-amber-700 text-sm font-semibold px-4 py-2 rounded-full mb-4">
-              <Sparkles size={14} />
-              What People Say
-            </div>
-            <h2 className="text-4xl md:text-5xl font-black text-stone-900 mb-5">
-              Trusted by Thousands
-            </h2>
-            <p className="text-lg text-stone-600 max-w-2xl mx-auto">
-              Students, companies, and universities share their InternConnect experience.
-            </p>
-          </div>
-        </div>
-
-        {/* Row 1 — scrolls left (teal accents) */}
-        <div className="marquee-container mb-6">
-          <div className="marquee-track">
-            {testimonialsRow1.map((t, i) => (
-              <div
-                key={`t1-${i}`}
-                className="w-96 flex-shrink-0 mx-3 bg-white rounded-2xl p-6 border border-stone-200 hover:border-teal-200 hover:shadow-lg transition-all duration-300"
-              >
-                <Quote size={20} className="text-teal-400 mb-3" />
-                <p className="text-stone-700 text-sm leading-relaxed mb-5 italic">
-                  "{t.quote}"
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 ${t.color} rounded-full flex items-center justify-center text-white font-bold text-xs`}>
-                    {t.initials}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-stone-900 text-sm">{t.name}</div>
-                    <div className="text-xs text-stone-500">{t.role} · {t.org}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Row 2 — scrolls right (amber accents) */}
-        <div className="marquee-container">
-          <div className="marquee-track-reverse">
-            {testimonialsRow2.map((t, i) => (
-              <div
-                key={`t2-${i}`}
-                className="w-96 flex-shrink-0 mx-3 bg-white rounded-2xl p-6 border border-stone-200 hover:border-amber-200 hover:shadow-lg transition-all duration-300"
-              >
-                <Quote size={20} className="text-amber-400 mb-3" />
-                <p className="text-stone-700 text-sm leading-relaxed mb-5 italic">
-                  "{t.quote}"
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 ${t.color} rounded-full flex items-center justify-center text-white font-bold text-xs`}>
-                    {t.initials}
-                  </div>
-                  <div>
-                    <div className="font-semibold text-stone-900 text-sm">{t.name}</div>
-                    <div className="text-xs text-stone-500">{t.role} · {t.org}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Role Benefits ── */}
-      <section className="py-28 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16 animate-on-scroll">
-            <h2 className="text-4xl md:text-5xl font-black text-stone-900 mb-5">
-              Built for Every Stakeholder
-            </h2>
-            <p className="text-lg text-stone-600 max-w-2xl mx-auto">
-              Tailored dashboards and tools for each role in the internship ecosystem.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-8">
-            {roleData.map((role) => {
-              const Icon = role.icon
-              return (
-                <div
-                  id={role.id}
-                  key={role.id}
-                  className={`relative group rounded-3xl p-8 bg-gradient-to-b ${role.color.gradient} to-white border ${role.color.border} hover:shadow-2xl ${role.color.hover} transition-all duration-300 animate-on-scroll`}
-                >
-                  <div className={`w-14 h-14 ${role.color.bg} rounded-2xl flex items-center justify-center mb-5 shadow-lg ${role.color.shadow}`}>
-                    <Icon size={24} className="text-white" />
-                  </div>
-                  <h3 className="text-2xl font-black text-stone-900 mb-1">{role.title}</h3>
-                  <p className="text-stone-500 text-sm mb-7">{role.subtitle}</p>
-
-                  <ul className="space-y-3 mb-8">
-                    {role.benefits.map((item) => (
-                      <li key={item} className="flex items-center gap-3 text-sm text-stone-700">
-                        <CheckCircle size={15} className="text-emerald-500 flex-shrink-0" />
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <Link
-                    to="/register"
-                    className={`w-full flex items-center justify-center gap-2 ${role.color.btn} text-white py-3.5 rounded-xl font-semibold transition-colors group/btn hover:scale-[1.02] active:scale-[0.98]`}
-                  >
-                    {role.cta}
-                    <ArrowRight size={16} className="group-hover/btn:translate-x-1 transition-transform" />
-                  </Link>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Sample Listings (Marquee) ── */}
-      <section className="py-24 bg-stone-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mb-12">
-          <div className="text-center animate-on-scroll">
-            <h2 className="text-3xl font-black text-stone-900 mb-3">Explore Opportunities</h2>
-            <p className="text-stone-600">
-              Browse hundreds of verified internship listings across industries and locations.
-            </p>
-          </div>
-        </div>
-
-        <div className="marquee-container mb-10">
-          <div className="marquee-track-slow">
-            {listingCards.map((job, i) => (
-              <div
-                key={`${job.role}-${i}`}
-                className="w-80 flex-shrink-0 mx-3 bg-white rounded-2xl p-6 border border-stone-200 hover:border-teal-200 hover:shadow-lg transition-all group"
-              >
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className={`w-11 h-11 ${job.logoColor} rounded-xl flex items-center justify-center text-white font-black text-lg`}>
-                      {job.logo}
-                    </div>
-                    <div>
-                      <div className="font-bold text-stone-900 text-sm">{job.company}</div>
-                      <div className="text-xs text-emerald-600 font-medium flex items-center gap-1">
-                        <CheckCircle size={11} />
-                        Verified Partner
-                      </div>
-                    </div>
-                  </div>
-                  <span
-                    className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                      job.type === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                    }`}
-                  >
-                    {job.type}
-                  </span>
-                </div>
-
-                <h3 className="font-semibold text-stone-900 mb-3">{job.role}</h3>
-
-                <div className="flex items-center gap-4 text-xs text-stone-500 mb-4">
-                  <span className="flex items-center gap-1">
-                    <MapPin size={12} />
-                    {job.location}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock size={12} />
-                    {job.duration}
-                  </span>
-                </div>
-
-                <div className="flex flex-wrap gap-1.5 mb-5">
-                  {job.tags.map((tag) => (
-                    <span key={tag} className="text-xs bg-stone-100 text-stone-600 px-2.5 py-1 rounded-lg">
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-
-                <Link
-                  to="/login"
-                  className="w-full flex items-center justify-center gap-2 border border-teal-200 text-teal-700 font-medium py-2.5 rounded-xl text-sm hover:bg-teal-50 hover:border-teal-400 transition-colors"
-                >
-                  Apply Now <ArrowRight size={14} />
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="text-center">
-          <Link
-            to="/login"
-            className="inline-flex items-center gap-2 text-teal-700 font-semibold hover:text-teal-800 transition-colors group"
+      {/* ── Section 04 · For students ────────────────────────────────── */}
+      <section
+        id="for-students"
+        ref={setRef(3)}
+        data-section="3"
+        className="reveal mx-auto"
+        style={{
+          maxWidth: 'var(--content-max)',
+          padding: 'clamp(56px, 8vw, 80px) var(--content-pad-x)',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: 40,
+          alignItems: 'center',
+        }}
+      >
+        <div>
+          <span className="t-eyebrow">For students</span>
+          <h3
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 'clamp(32px, 3.5vw, 48px)',
+              lineHeight: 1.05,
+              letterSpacing: '-0.02em',
+              margin: '8px 0 0',
+              fontWeight: 400,
+            }}
           >
-            View all internship listings
-            <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+            Discover. Apply. Place.
+          </h3>
+          <p
+            className="t-body-lg"
+            style={{ color: 'var(--text-secondary)', marginTop: 14, maxWidth: 480 }}
+          >
+            Verified internships from companies your university already trusts. One-click to
+            apply. Track every status from a single page.
+          </p>
+          <div className="flex flex-wrap" style={{ gap: 10, marginTop: 18 }}>
+            <Link to="/register">
+              <Button variant="ghost" trailing={<ArrowRight size={16} strokeWidth={1.8} />}>
+                Browse internships
+              </Button>
+            </Link>
+          </div>
+        </div>
+        <InternshipCardMock />
+      </section>
+
+      {/* ── Section 05 · For companies ──────────────────────────────── */}
+      <section
+        id="for-companies"
+        ref={setRef(4)}
+        data-section="4"
+        className="reveal mx-auto"
+        style={{
+          maxWidth: 'var(--content-max)',
+          padding: 'clamp(56px, 8vw, 80px) var(--content-pad-x)',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: 40,
+          alignItems: 'center',
+        }}
+      >
+        <PipelineMock />
+        <div>
+          <span className="t-eyebrow">For companies &amp; supervisors</span>
+          <h3
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 'clamp(32px, 3.5vw, 48px)',
+              lineHeight: 1.05,
+              letterSpacing: '-0.02em',
+              margin: '8px 0 0',
+              fontWeight: 400,
+            }}
+          >
+            Mentor with structure.
+          </h3>
+          <p
+            className="t-body-lg"
+            style={{ color: 'var(--text-secondary)', marginTop: 14, maxWidth: 480 }}
+          >
+            Post the role, review the cohort, place the intern. Assign tasks, grade work, write
+            the assessment — every interaction in one thread.
+          </p>
+          <div className="flex flex-wrap" style={{ gap: 10, marginTop: 18 }}>
+            <Link to="/register">
+              <Button variant="ghost" trailing={<ArrowRight size={16} strokeWidth={1.8} />}>
+                How it works for companies
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Section 06 · For universities ───────────────────────────── */}
+      <section
+        id="for-universities"
+        ref={setRef(5)}
+        data-section="5"
+        className="reveal mx-auto"
+        style={{
+          maxWidth: 'var(--content-max)',
+          padding: 'clamp(56px, 8vw, 80px) var(--content-pad-x)',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gap: 40,
+          alignItems: 'center',
+        }}
+      >
+        <div>
+          <span className="t-eyebrow">For universities</span>
+          <h3
+            style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: 'clamp(32px, 3.5vw, 48px)',
+              lineHeight: 1.05,
+              letterSpacing: '-0.02em',
+              margin: '8px 0 0',
+              fontWeight: 400,
+            }}
+          >
+            Oversee the cohort.
+          </h3>
+          <p
+            className="t-body-lg"
+            style={{ color: 'var(--text-secondary)', marginTop: 14, maxWidth: 480 }}
+          >
+            Verify your students, vet every application before it goes out, see each placement at
+            a glance. Export a clean report at the end of every term.
+          </p>
+        </div>
+        <PlacementRateMock />
+      </section>
+
+      {/* ── Section 07 · Trust ──────────────────────────────────────── */}
+      <section
+        ref={setRef(6)}
+        data-section="6"
+        className="reveal mx-auto"
+        style={{
+          maxWidth: 'var(--content-max)',
+          padding: 'clamp(56px, 8vw, 80px) var(--content-pad-x)',
+        }}
+      >
+        <span className="t-eyebrow">Built for trust</span>
+        <h3
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(32px, 3.5vw, 48px)',
+            lineHeight: 1.05,
+            letterSpacing: '-0.02em',
+            margin: '8px 0 0',
+            fontWeight: 400,
+            maxWidth: 720,
+          }}
+        >
+          Verification, audit trail, appeals — said plainly.
+        </h3>
+        <div
+          style={{
+            marginTop: 28,
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+            gap: 14,
+          }}
+        >
+          {[
+            {
+              Icon: Shield,
+              title: 'Verified accounts',
+              body: 'Universities verify their students. Admins verify organisations. No one applies in the dark.',
+            },
+            {
+              Icon: ScrollText,
+              title: 'Full audit trail',
+              body: 'Every status change, every offer, every assessment — written to an immutable log.',
+            },
+            {
+              Icon: Gavel,
+              title: 'Fair appeals',
+              body: 'A student can appeal any decision through the platform. Universities adjudicate, on the record.',
+            },
+          ].map(({ Icon, title, body }) => (
+            <Card key={title} style={{ padding: 20 }}>
+              <Icon size={22} strokeWidth={1.6} />
+              <div className="t-display-sm" style={{ marginTop: 14 }}>{title}</div>
+              <p
+                className="t-body-md"
+                style={{ color: 'var(--text-secondary)', marginTop: 6, marginBottom: 0 }}
+              >
+                {body}
+              </p>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* ── Section 08 · Final CTA ──────────────────────────────────── */}
+      <section
+        ref={setRef(7)}
+        data-section="7"
+        className="reveal mx-auto"
+        style={{
+          maxWidth: 'var(--content-max)',
+          padding: 'clamp(80px, 12vw, 120px) var(--content-pad-x) clamp(96px, 14vw, 140px)',
+          textAlign: 'center',
+        }}
+      >
+        <h2
+          style={{
+            fontFamily: 'var(--font-display)',
+            fontSize: 'clamp(40px, 6vw, 72px)',
+            lineHeight: 1,
+            letterSpacing: '-0.025em',
+            margin: 0,
+            fontWeight: 400,
+          }}
+        >
+          Begin your internship,<br />begin your{' '}
+          <span style={{ fontStyle: 'italic', color: 'var(--brand-500)' }}>career</span>.
+        </h2>
+        <div className="flex" style={{ justifyContent: 'center', marginTop: 26 }}>
+          <Link to="/register">
+            <Button
+              variant="primary"
+              size="lg"
+              pill
+              trailing={<ArrowRight size={16} strokeWidth={1.8} />}
+            >
+              Create your account
+            </Button>
           </Link>
         </div>
-      </section>
-
-      {/* ── CTA Banner ── */}
-      <section className="py-28 bg-gradient-to-br from-teal-950 via-teal-900 to-teal-800 relative overflow-hidden">
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-0 left-1/4 w-64 h-64 bg-teal-500/20 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 right-1/4 w-64 h-64 bg-amber-500/20 rounded-full blur-3xl" />
-        </div>
-
-        {/* Floating dots */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-16 right-[18%] w-2.5 h-2.5 bg-amber-400/40 rounded-full animate-float" />
-          <div className="absolute bottom-24 left-[22%] w-2 h-2 bg-teal-300/50 rounded-full animate-float-delayed" />
-          <div className="absolute top-1/2 left-[12%] w-3 h-3 bg-amber-300/30 rounded-full animate-float" />
-        </div>
-
-        <div className="relative max-w-4xl mx-auto px-4 text-center animate-on-scroll">
-          <h2 className="text-4xl md:text-5xl font-black text-white mb-6 leading-tight">
-            Ready to Transform Your
-            <br />
-            Internship Journey?
-          </h2>
-          <p className="text-xl text-teal-200 mb-10 max-w-2xl mx-auto">
-            Join thousands of students, companies, and universities already using InternConnect to
-            bridge the gap between education and industry.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link
-              to="/register"
-              className="bg-white text-teal-900 font-bold px-10 py-4 rounded-2xl hover:bg-teal-50 transition-colors shadow-2xl hover:scale-[1.02] active:scale-[0.98]"
-            >
-              Create Free Account
-            </Link>
-            <Link
-              to="/login"
-              className="border-2 border-teal-500/50 text-white font-bold px-10 py-4 rounded-2xl hover:bg-teal-800/50 transition-colors backdrop-blur hover:scale-[1.02] active:scale-[0.98]"
-            >
-              Sign In
-            </Link>
-          </div>
-        </div>
+        <p className="t-caption" style={{ marginTop: 14 }}>
+          Free for students &amp; universities. No card required.
+        </p>
       </section>
     </div>
-  )
+  );
 }
