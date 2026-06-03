@@ -166,24 +166,22 @@ export default function ApplicationsPage() {
               {app.attachments?.length > 0 && (
                 <div className="mt-3 rounded-xl bg-slate-50 px-3.5 py-2.5">
                   <p className="text-xs font-medium text-slate-500">Attachments</p>
-                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                  <div className="mt-1.5 space-y-1.5">
                     {app.attachments.map((a, i) => {
                       const href = a.link || a.path;
-                      return href ? (
-                        <a
-                          key={i}
-                          href={href}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-sm text-brand-600 hover:underline"
-                        >
-                          📎 {a.label}
-                        </a>
-                      ) : (
-                        <span key={i} className="text-sm text-slate-600">
-                          • {a.label}
-                          {a.detail ? ` (${a.detail})` : ''}
-                        </span>
+                      const kindLabel = { cv: 'CV', certification: 'Certification', experience: 'Experience', portfolio: 'Portfolio', document: 'Document', upload: 'File' }[a.kind] || 'Attachment';
+                      return (
+                        <div key={i} className="flex items-center gap-2 text-sm">
+                          <span className="shrink-0 rounded bg-slate-200 px-1.5 py-0.5 text-xs font-medium text-slate-600">{kindLabel}</span>
+                          {href ? (
+                            <a href={href} target="_blank" rel="noreferrer" className="text-brand-600 hover:underline truncate">
+                              {a.label || a.filename || 'View'}
+                            </a>
+                          ) : (
+                            <span className="text-slate-700">{a.label}</span>
+                          )}
+                          {a.detail && <span className="text-xs text-slate-400 truncate">{a.detail}</span>}
+                        </div>
                       );
                     })}
                   </div>

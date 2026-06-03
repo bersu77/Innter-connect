@@ -70,14 +70,20 @@ export const applyToInternship = async (req, res, next) => {
     }
     if (!Array.isArray(selected)) selected = [];
     const attachments = [];
+    // Always include the student's CV — it's required to apply and companies
+    // must be able to view it regardless of what the student selected.
+    if (student.cv?.path) {
+      attachments.push({
+        kind: 'cv',
+        label: student.cv.filename || 'CV / Résumé',
+        path: student.cv.path,
+        link: student.cv.path,
+      });
+    }
     for (const sel of selected) {
-      if (sel?.kind === 'cv' && student.cv?.path) {
-        attachments.push({
-          kind: 'cv',
-          label: student.cv.filename || 'CV / Résumé',
-          path: student.cv.path,
-          link: student.cv.path,
-        });
+      if (sel?.kind === 'cv') {
+        // Already included above — skip duplicate.
+        continue;
       } else if (sel?.kind === 'certification' && student.certifications?.[sel.index]) {
         const c = student.certifications[sel.index];
         attachments.push({ kind: 'certification', label: c.name, detail: c.issuer, link: c.credentialUrl });
