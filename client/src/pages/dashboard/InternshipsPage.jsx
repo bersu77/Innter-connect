@@ -31,7 +31,6 @@ function InternshipCard({ internship }) {
             </span>
           )}
           {internship.position?.type && <span className="capitalize">· {internship.position.type}</span>}
-          {internship.position?.paid && <span>· Paid</span>}
         </div>
       </Card>
     </Link>

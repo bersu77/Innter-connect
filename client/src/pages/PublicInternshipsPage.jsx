@@ -389,7 +389,6 @@ function InternshipRow({ item }) {
               )}
               {pos.type && <span className="capitalize">{pos.type}</span>}
               {pos.duration && <span>{pos.duration}</span>}
-              {pos.paid && <span>Paid</span>}
             </div>
           </div>
           <Button

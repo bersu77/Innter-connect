@@ -172,7 +172,6 @@ export default function PublicInternshipDetailPage() {
                     Deadline {fmtDate(internship.applicationDeadline)}
                   </span>
                 )}
-                {pos.paid && <span>Paid</span>}
               </div>
 
               {internship.description && (

@@ -14,8 +14,6 @@ const EMPTY = {
   tags: '',
   type: 'onsite',
   duration: '',
-  paid: false,
-  stipend: '',
   applicationDeadline: '',
   totalPositions: 1,
   minGPA: '',
@@ -45,8 +43,6 @@ export default function PostInternshipPage() {
           tags: csv(it.tags),
           type: it.position?.type || 'onsite',
           duration: it.position?.duration || '',
-          paid: Boolean(it.position?.paid),
-          stipend: it.position?.stipend || '',
           applicationDeadline: dateInput(it.applicationDeadline),
           totalPositions: it.totalPositions || 1,
           minGPA: it.requirements?.minGPA || '',
@@ -75,8 +71,6 @@ export default function PostInternshipPage() {
       position: {
         type: form.type,
         duration: form.duration,
-        paid: form.paid,
-        stipend: form.stipend === '' ? 0 : Number(form.stipend),
       },
       requirements: {
         minGPA: form.minGPA === '' ? 0 : Number(form.minGPA),
@@ -144,21 +138,11 @@ export default function PostInternshipPage() {
             <option value="hybrid">Hybrid</option>
           </Select>
           <Input label="Duration" value={form.duration} onChange={set('duration')} placeholder="3 months" />
-          <Input label="Application deadline" type="date" value={form.applicationDeadline} onChange={set('applicationDeadline')} />
+          <Input label="Application deadline" type="date" min={new Date().toISOString().split('T')[0]} value={form.applicationDeadline} onChange={set('applicationDeadline')} />
           <Input label="Total positions" type="number" min="1" value={form.totalPositions} onChange={set('totalPositions')} />
           <Input label="Minimum GPA" type="number" step="0.01" min="0" max="4" value={form.minGPA} onChange={set('minGPA')} placeholder="3.00" />
-          <Input label="Stipend (ETB)" type="number" value={form.stipend} onChange={set('stipend')} placeholder="8000" />
           <Input label="Required skills" value={form.skills} onChange={set('skills')} hint="Comma-separated" placeholder="React, JavaScript" />
           <Input label="Eligible majors" value={form.majors} onChange={set('majors')} hint="Comma-separated" placeholder="Computer Science" />
-          <label className="flex items-center gap-2.5 sm:col-span-2">
-            <input
-              type="checkbox"
-              checked={form.paid}
-              onChange={set('paid')}
-              className="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
-            />
-            <span className="text-sm text-slate-700">This is a paid internship</span>
-          </label>
           <div className="flex gap-3 sm:col-span-2">
             <Button type="button" loading={saving} onClick={() => submit('active')}>
               {editing ? 'Save & publish' : 'Publish internship'}

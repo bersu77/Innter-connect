@@ -18,8 +18,6 @@ const positionSchema = new mongoose.Schema(
     duration: String,
     startDate: Date,
     endDate: Date,
-    paid: { type: Boolean, default: false },
-    stipend: { type: Number, default: 0 },
   },
   { _id: false },
 );

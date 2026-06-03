@@ -167,11 +167,6 @@ export default function InternshipDetailPage() {
           </div>
         )}
 
-        {pos.paid && (
-          <p className="mt-4 text-sm text-slate-600">
-            Paid position{pos.stipend ? ` — stipend ${pos.stipend} ETB` : ''}.
-          </p>
-        )}
 
         {role === 'company' && (
           <div className="mt-6">

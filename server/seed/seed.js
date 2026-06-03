@@ -190,8 +190,6 @@ async function seed() {
         position: {
           type: pick(['onsite', 'remote', 'hybrid'], k),
           duration: pick(['3 months', '4 months', '6 months'], k),
-          paid: k % 2 === 0,
-          stipend: k % 2 === 0 ? 6000 + k * 1000 : 0,
         },
         applicationDeadline: days(15 + k * 10),
         postedDate: ago(10),
