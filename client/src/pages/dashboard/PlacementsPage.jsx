@@ -159,6 +159,18 @@ function PlacementCard({ placement: p, role, isSupervisor, supervisors, onReload
           <span className="text-xs text-slate-400">Report submitted: {p.finalReport.filename}</span>
         )}
 
+        {(isSupervisor || role === 'university') && p.finalReport?.submittedAt && (
+          <a
+            href={p.finalReport.path}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
+          >
+            View report
+            <span className="text-xs text-slate-400">({p.finalReport.filename})</span>
+          </a>
+        )}
+
         {isSupervisor && p.finalReport?.submittedAt && !p.completionApprovedBySupervisor && (
           <Button size="sm" loading={busy} onClick={() => run(() => placementApi.confirmCompletion(p._id))}>
             Confirm completion
