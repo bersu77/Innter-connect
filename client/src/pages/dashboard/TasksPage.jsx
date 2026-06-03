@@ -403,7 +403,7 @@ export default function TasksPage() {
               rows={3}
               placeholder="What the task is, expectations, and how it will be graded…"
             />
-            <Input label="Deadline" type="date" value={form.deadline} onChange={set('deadline')} />
+            <Input label="Deadline" type="date" min={new Date().toISOString().split('T')[0]} value={form.deadline} onChange={set('deadline')} />
             <Input
               label="Graded out of"
               type="number"
