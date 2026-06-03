@@ -51,9 +51,11 @@ async function seed() {
   ]);
   console.log('Cleared all collections');
 
-  // Reconcile Task indexes: the task number is now unique per student, not
-  // globally — drop any stale global-unique index left by an earlier schema.
-  await Task.syncIndexes();
+  // Drop stale indexes left by earlier schema versions so inserts don't clash.
+  const db = mongoose.connection.db;
+  for (const col of ['applications', 'tasks']) {
+    try { await db.collection(col).dropIndexes(); } catch { /* collection may not exist yet */ }
+  }
 
   // ── Admin ──
   const admin = await User.create({
