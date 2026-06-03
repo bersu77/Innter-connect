@@ -5,8 +5,8 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
+    "start": "node init && node index.js",
+    "dev": "node init && nodemon index.js",
     "seed": "node seed/seed.js",
     "test": "node tests/integration.mjs",
     "db:sync": "node scripts/syncSchema.js"
