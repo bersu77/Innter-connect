@@ -17,7 +17,6 @@ uploads/
 server/.env
 
 # Editor
-.vscode/
 .idea/
 *.suo
 *.ntvs*
