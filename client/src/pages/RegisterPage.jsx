@@ -46,6 +46,10 @@ export default function RegisterPage() {
       setError('Password must be at least 8 characters.');
       return;
     }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      setError('Password must include uppercase, lowercase, a number, and a special character.');
+      return;
+    }
     if (password !== confirm) {
       setError('Passwords do not match.');
       return;
