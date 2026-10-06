@@ -18,6 +18,10 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Password is required'],
       minlength: [8, 'Password must be at least 8 characters'],
+      validate: {
+        validator: (v) => /[A-Z]/.test(v) && /[a-z]/.test(v) && /\d/.test(v) && /[^A-Za-z0-9]/.test(v),
+        message: 'Password must include uppercase, lowercase, a number, and a special character',
+      },
       select: false,
     },
     // Optional username — supervisors log in with this; can also be set by any user.
