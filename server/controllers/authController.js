@@ -286,10 +286,10 @@ export const updateCredentials = async (req, res, next) => {
       if (!currentPassword || !(await user.comparePassword(currentPassword))) {
         return res.status(400).json({ success: false, message: 'Current password is incorrect' });
       }
-      if (newPassword.length < 8) {
+      if (newPassword.length < 8 || !/[A-Z]/.test(newPassword) || !/[a-z]/.test(newPassword) || !/\d/.test(newPassword) || !/[^A-Za-z0-9]/.test(newPassword)) {
         return res
           .status(400)
-          .json({ success: false, message: 'New password must be at least 8 characters' });
+          .json({ success: false, message: 'Password must be at least 8 characters and include uppercase, lowercase, a number, and a special character' });
       }
       user.password = newPassword;
     }
